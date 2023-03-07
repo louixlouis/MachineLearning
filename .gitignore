@@ -2,3 +2,6 @@
 
 # Training or Test datasets
 data/
+
+# Checkpoints
+checkpoints/
