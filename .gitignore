@@ -1,4 +1,4 @@
 .env
 
 # Training or Test datasets
-/data
+data/
