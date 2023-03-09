@@ -5,3 +5,6 @@ data/
 
 # Checkpoints
 checkpoints/
+
+# Cache
+_pycache_/

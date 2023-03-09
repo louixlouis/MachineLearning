@@ -1,6 +1,7 @@
 import os
 import random
 
+import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 
@@ -58,18 +59,32 @@ if __name__ == '__main__':
     #####
     # Test loop
     #####
-    with torch.no_grad():
-        model.eval()
-
-        result_images = Image.new('L', (28*10, 28*2))
-        for i in range(10):
-            r = random.randint(0, 999)
-            X_test = testset.data[r + 1000*i : r + 1 + 1000*i].view(1,1,28,28).float().to(device)
-            _, reconstructed = model(X_test)
-            # plt.imshow(X_test.view(28, 28).cpu(), cmap='gist_gray')
-            plt.imshow(reconstructed.squeeze().cpu(), cmap='gist_gray')
-            plt.show()
-            # result_images.paste(transforms.ToPILImage()(X_test[0].cpu()), (28*i, 0))
-            # result_images.paste(transforms.ToPILImage()(reconstructed.squeeze()), (28*i, 28))
-
-        result_images.show()
+    '''
+    figsize = (width, height) 
+    default : 6.4 X 4.8 in inch
+    '''
+    num = 10
+    plt.figure(figsize=(16, 4.5))
+    labels = testset.targets.numpy()
+    label_index = {i:np.where(labels == i)[0][0] for i in range(num)}
+    for i in range(num):
+        '''
+        subplot(row, col, ?)
+        '''
+        ax = plt.subplot(2, num, i +1)
+        image = testset[label_index[i]][0].unsqueeze(dim=0).to(device)
+        with torch.no_grad():
+            model.eval()
+            _, reconstructed = model(image)
+            plt.imshow(image.cpu().squeeze().numpy(), cmap='gist_gray')
+            ax.get_xaxis().set_visible(False)
+            ax.get_yaxis().set_visible(False)
+        if i == num // 2:
+            ax.set_title('Original images')    
+        ax = plt.subplot(2, num, i + 1 + num)
+        plt.imshow(reconstructed.cpu().squeeze().numpy(), cmap='gist_gray')
+        ax.get_xaxis().set_visible(False)
+        ax.get_yaxis().set_visible(False)
+        if i == num//2:
+            ax.set_title('Reconstructed images')
+    plt.show()
