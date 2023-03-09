@@ -14,6 +14,10 @@ from model import AutoEncoder
 if __name__ == '__main__':
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f'Device : {device}')
+    torch.manual_seed(777)
+    if device == 'cuda':
+        torch.cuda.manual_seed_all(777)
+
     learning_rate = 0.001
     training_epochs = 10
     batch_size = 256
@@ -48,7 +52,7 @@ if __name__ == '__main__':
     #####
     # Load checkpoint
     #####
-    checkpoint = torch.load(os.path.join(checkpoints_path, 'model_19.tar'))
+    checkpoint = torch.load(os.path.join(checkpoints_path, 'model_29.tar'))
     model.load_state_dict(checkpoint['model'])
 
     #####

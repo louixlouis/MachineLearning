@@ -18,8 +18,12 @@ def save_checkpoint(model, opt, epoch, path):
 if __name__ == '__main__':
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f'Device : {device}')
+    torch.manual_seed(777)
+    if device == 'cuda':
+        torch.cuda.manual_seed_all(777)
+
     learning_rate = 0.001
-    training_epochs = 20
+    training_epochs = 30
     batch_size = 256
 
     checkpoints_path = './checkpoints'

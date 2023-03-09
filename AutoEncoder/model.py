@@ -8,6 +8,7 @@ class AutoEncoder(nn.Module):
             nn.Conv2d(1, 8, 3, stride=2, padding=1),
             nn.ReLU(),
             nn.Conv2d(8, 16, 3, stride=2, padding=1),
+            nn.BatchNorm2d(16),
             nn.ReLU(),
             nn.Conv2d(16, 32, 3, stride=2),
             nn.ReLU(),
