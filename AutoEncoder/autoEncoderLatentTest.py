@@ -13,9 +13,14 @@ import torch.nn as nn
 from torchvision import transforms, datasets
 
 from model import AutoEncoder
-def on_click(event):
-    x, y = event.xdata, event.ydata
-    latent_vector = None
+
+def plot_latent(X, Y):
+    pca.fit(X)
+    X = pca.transform(X)
+    pca_data_df = np.vstack((X.T, Y)).T
+    pca_data_df = pd.DataFrame(data=pca_data_df, columns=("x", "y", "label"))
+    sb.FacetGrid(pca_data_df, hue='label', height=8, aspect=1).map(plt.scatter, 'x', 'y').add_legend()
+    plt.show()
 
 if __name__ == '__main__':
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -80,9 +85,4 @@ if __name__ == '__main__':
             total_latent_vector = np.concatenate((total_latent_vector, latent_vector), axis=0)
             total_Y_test = np.concatenate((total_Y_test, Y_test), axis=0)
 
-    pca.fit(total_latent_vector)
-    total_latent_vector = pca.transform(total_latent_vector)
-    pca_data_df = np.vstack((total_latent_vector.T, total_Y_test)).T
-    pca_data_df = pd.DataFrame(data=pca_data_df, columns=("x", "y", "label"))
-    sb.FacetGrid(pca_data_df, hue='label', height=8, aspect=1).map(plt.scatter, 'x', 'y').add_legend()
-    plt.show()
+    plot_latent(total_latent_vector, total_Y_test)
