@@ -68,7 +68,8 @@ if __name__ == '__main__':
     default : 6.4 X 4.8 in inch
     '''
     plt.figure(figsize=(8, 4))
-    total_latent_vector = np.empty()
+    total_latent_vector = np.array([]).reshape(-1, 2)
+    total_Y_test = np.array([])
     with torch.no_grad():
         model.eval()
         for X_test, Y_test in test_batches:
@@ -77,9 +78,8 @@ if __name__ == '__main__':
             latent_vector = latent_vector.cpu()
             pca.fit(latent_vector)
             latent_vector = pca.transform(latent_vector)
-            print(type(latent_vector))
-            print(latent_vector.shape)
-            plt.subplot(121)
-            plt.scatter(latent_vector[:, 0], latent_vector[:, 1], c=Y_test, s=8, cmap='tab10')
-            plt.show()
-            break
+            total_latent_vector = np.concatenate((total_latent_vector, latent_vector), axis=0)
+            total_Y_test = np.concatenate((total_Y_test, Y_test), axis=0)
+    plt.subplot(121)
+    plt.scatter(total_latent_vector[:5000, 0], total_latent_vector[:5000, 1], c=total_Y_test[:5000], s=8, cmap='tab10')
+    plt.show()
