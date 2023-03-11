@@ -38,3 +38,8 @@ class AutoEncoder(nn.Module):
         out = self.decoder_fc(latent_vec)
         reconstructed = self.decoder_layer(out.view(out.shape[0], 32, 3, 3))
         return latent_vec, reconstructed
+
+    def decoder(self, latent_vec):
+        out = self.decoder_fc(latent_vec)
+        reconstructed = self.decoder_layer(out.view(out.shape[0], 32, 3, 3))
+        return reconstructed

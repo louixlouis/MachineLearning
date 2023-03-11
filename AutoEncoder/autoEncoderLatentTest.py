@@ -32,16 +32,23 @@ model = AutoEncoder().to(device)
 def on_click(event):
     x, y = event.xdata, event.ydata
     if x != None and y != None:
-        latent_vector = pca.inverse_transform([x, y])
+        pass
+        # latent_vector = pca.inverse_transform([x, y])
+        # latent_vector = torch.from_numpy(latent_vector).float().to(device)
         
+        # reconstructed = model.decoder(latent_vector.unsqueeze(dim=0))
+        # plt.imshow(reconstructed.cpu().squeeze().numpy(), cmap='gist_gray')
 
 def plot_latent(X, Y):
     pca.fit(X)
     X = pca.transform(X)
     pca_data_df = np.vstack((X.T, Y)).T
     pca_data_df = pd.DataFrame(data=pca_data_df, columns=("x", "y", "label"))
-    ax = sb.FacetGrid(pca_data_df, hue='label', height=8, aspect=1).map(plt.scatter, 'x', 'y').add_legend()
-    ax.figure.canvas.mpl_connect('motion_notify_event', on_click)
+    
+    # figure = plt.figure(figsize=(18, 6))
+    fig = sb.FacetGrid(pca_data_df, hue='label', height=8, aspect=1).map(plt.scatter, 'x', 'y').add_legend()
+    # ax.figure.canvas.mpl_connect('motion_notify_event', on_click)
+    fig.canvas.mpl_connect('motion_notify_event', on_click)
     plt.show()
 
 if __name__ == '__main__':
@@ -92,4 +99,4 @@ if __name__ == '__main__':
             total_latent_vector = np.concatenate((total_latent_vector, latent_vector), axis=0)
             total_Y_test = np.concatenate((total_Y_test, Y_test), axis=0)
 
-    plot_latent(total_latent_vector, total_Y_test)
+        plot_latent(total_latent_vector, total_Y_test)
