@@ -14,21 +14,37 @@ from torchvision import transforms, datasets
 
 from model import AutoEncoder
 
+#####
+# Define PCA
+#####
+pca = PCA(n_components=2)
+
+#####
+# Define model.
+#####
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+print(f'Device : {device}')
+torch.manual_seed(777)
+if device == 'cuda':
+    torch.cuda.manual_seed_all(777)
+model = AutoEncoder().to(device)
+
+def on_click(event):
+    x, y = event.xdata, event.ydata
+    if x != None and y != None:
+        latent_vector = pca.inverse_transform([x, y])
+        
+
 def plot_latent(X, Y):
     pca.fit(X)
     X = pca.transform(X)
     pca_data_df = np.vstack((X.T, Y)).T
     pca_data_df = pd.DataFrame(data=pca_data_df, columns=("x", "y", "label"))
-    sb.FacetGrid(pca_data_df, hue='label', height=8, aspect=1).map(plt.scatter, 'x', 'y').add_legend()
+    ax = sb.FacetGrid(pca_data_df, hue='label', height=8, aspect=1).map(plt.scatter, 'x', 'y').add_legend()
+    ax.figure.canvas.mpl_connect('motion_notify_event', on_click)
     plt.show()
 
 if __name__ == '__main__':
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    print(f'Device : {device}')
-    torch.manual_seed(777)
-    if device == 'cuda':
-        torch.cuda.manual_seed_all(777)
-
     learning_rate = 0.001
     training_epochs = 10
     batch_size = 256
@@ -54,15 +70,6 @@ if __name__ == '__main__':
         batch_size = batch_size,
         shuffle = True,
     )
-    #####
-    # Define PCA
-    #####
-    pca = PCA(n_components=2)
-
-    #####
-    # Define model.
-    #####
-    model = AutoEncoder().to(device)
 
     #####
     # Load checkpoint
