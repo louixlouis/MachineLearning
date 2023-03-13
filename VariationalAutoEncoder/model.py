@@ -98,10 +98,10 @@ class VariationalAutoEncoder(nn.Module):
     def encoder(self, x):
         out = self.encoder_layer(x)
         mu = self.fc_mu(out.view(out.shape[0], -1))
-        log_var = self.fc_log_var(x.view(x.shape[0], -1))
+        log_var = self.fc_log_var(out.view(out.shape[0], -1))
         return mu, log_var
     
-    def decode(self, z):
+    def decoder(self, z):
         out = self.decoder_fc(z)
         out = self.decoder_layer(out.view(out.shape[0], 32, 3, 3))
         return out
