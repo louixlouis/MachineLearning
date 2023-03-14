@@ -63,11 +63,6 @@ if __name__=='__main__':
             reconstructed = model.decoder(z)
             reconstructed = torch.cat([X_test.view(-1, 1, 28, 28), reconstructed.view(-1, 1, 28, 28)], dim=3)
             save_image(reconstructed, os.path.join(reconstruction_path, f'{iter+1}.png'))
-
-        # z = torch.randn(batch_size, 10).to(device)
-        # print(z)
-        # sample_image = model.decoder(z)
-        # save_image(sample_image.view(-1, 1, 28, 28), os.path.join(sample_path, f'sample.png'))
         
         x_values = np.linspace(-3, 3, 20)
         y_values = np.linspace(-3, 3, 20)
