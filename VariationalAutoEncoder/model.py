@@ -4,84 +4,42 @@ import torch.nn as nn
 class VariationalAutoEncoder(nn.Module):
     def __init__(self):
         super(VariationalAutoEncoder, self).__init__()
-        # self.encoder_layer = nn.Seuqential(
-        #     '''
-        #     In : Batch * 1 * 28 * 28
-        #     Out: Batch * 32 * 26 * 26
-        #     '''
-        #     nn.Conv2d(1, 32, 3, padding=1),
-        #     nn.BatchNorm2d(32),
-        #     nn.LeakyReLU(),
-        #     '''
-        #     In : Batch * 32 * 26 * 26
-        #     Out: Batch * 64 * 24 * 24
-        #     '''
-        #     nn.Conv2d(32, 64, 3, stride=2, padding=1),
-        #     nn.BatchNorm2d(64),
-        #     nn.LeakyReLU(),
-        #     '''
-        #     In : Batch * 64 * 24 * 24
-        #     Out: Batch * 128 * 22 * 22
-        #     '''
-        #     nn.Conv2d(64, 128, 3, stride=2, padding=1),
-        #     nn.BatchNorm2d(128),
-        #     nn.LeakyReLU(),
-        #     '''
-        #     In : Batch * 128 * 22 * 22
-        #     Out: Batch * 256 * 20 * 20
-        #     '''
-        #     nn.Conv2d(128, 256, 3, stride=2, padding=1),
-        #     nn.BatchNorm2d(256),
-        #     nn.LeakyReLU(),
-        #     '''
-        #     In : Batch * 256 * 20 * 20
-        #     Out: Batch * 512 * 18 * 18
-        #     '''
-        #     nn.Conv2d(256, 512, 3, stride=2, padding=1),
-        #     nn.BatchNorm2d(512),
-        #     nn.LeakyReLU(),
-        # )
-        # self.fc_mu = nn.Linear(518*18*18,2)
-        # self.fc_log_var = nn.Linear(518*18*18,2)
-
-        # self.decoder_fc = nn.Linear(2, 518*18*18)
-        # self.decoder_layer = nn.Sequential(
-        #     2, 
-        # )
-        self.encoder_layer = nn.Sequential(
-            nn.Conv2d(1, 8, 3, stride=2, padding=1),
+        self.encoder_layer_1 = nn.Sequential(
+            nn.Linear(784, 400),
             nn.ReLU(),
-            nn.Conv2d(8, 16, 3, stride=2, padding=1),
-            nn.BatchNorm2d(16),
-            nn.ReLU(),
-            nn.Conv2d(16, 32, 3, stride=2),
-            nn.ReLU(),
+            nn.Dropout(p=0.2)
         )
-        self.fc_mu = nn.Sequential(
-            nn.Linear(3*3*32, 128),
+        self.encoder_layer_2 = nn.Sequential(
+            nn.Linear(400, 400),
             nn.ReLU(),
-            # nn.Linear(128, 4)
-            nn.Linear(128, 2)
-        )
-        # ln(Variance)
-        self.fc_log_var = nn.Sequential(
-            nn.Linear(3*3*32, 128),
-            nn.ReLU(),
-            nn.Linear(128, 2)
+            nn.Dropout(p=0.2)
         )
 
-        self.decoder_fc = nn.Sequential(
-            nn.Linear(2, 128),
-            nn.ReLU(),
-            nn.Linear(128, 3*3*32),
+        # output layer
+        self.mu_layer = nn.Sequential(
+            nn.Linear(400, 10),
             nn.ReLU()
         )
-        self.decoder_layer = nn.Sequential(
-            nn.ConvTranspose2d(32, 16, 3, stride=2, output_padding=0),
+        self.log_var_layer = nn.Sequential(
+            nn.Linear(400, 10),
+            nn.ReLU()
+        )
+
+        self.decoder_layer_1 = nn.Sequential(
+            nn.Linear(10, 400),
             nn.ReLU(),
-            nn.ConvTranspose2d(16, 8, 3, stride=2, padding=1, output_padding=1),
+            nn.Dropout(p=0.2),
+        )
+        self.decoder_layer_2 = nn.Sequential(
+            nn.Linear(400, 400),
             nn.ReLU(),
-            nn.ConvTranspose2d(8, 1, 3, stride=2, padding=1, output_padding=1)
+            nn.Dropout(p=0.2)
+        )
+
+        # output layer
+        self.decoder_fc = nn.Sequential(
+            nn.Linear(400, 784),
+            nn.Sigmoid()
         )
 
     def reparameterize(self, mu, log_var):
@@ -93,21 +51,24 @@ class VariationalAutoEncoder(nn.Module):
         """
         std = torch.exp(0.5*log_var)
         eps = torch.randn_like(std)
-        return eps*std + mu
+        return eps * std + mu
     
     def encoder(self, x):
-        out = self.encoder_layer(x)
-        mu = self.fc_mu(out.view(out.shape[0], -1))
-        log_var = self.fc_log_var(out.view(out.shape[0], -1))
+        # out = self.encoder_layer_1(x.view(x.shape[0], -1))
+        out = self.encoder_layer_1(x)
+        out = self.encoder_layer_2(out)
+        mu = self.mu_layer(out)
+        log_var = self.log_var_layer(out)
         return mu, log_var
     
     def decoder(self, z):
-        out = self.decoder_fc(z)
-        out = self.decoder_layer(out.view(out.shape[0], 32, 3, 3))
+        out = self.decoder_layer_1(z)
+        out = self.decoder_layer_2(out)
+        out = self.decoder_fc(out)
         return out
     
     def forward(self, x):
         mu, log_var = self.encoder(x)
         z = self.reparameterize(mu, log_var)
-        out = self.decode(z)
+        out = self.decoder(z)
         return out

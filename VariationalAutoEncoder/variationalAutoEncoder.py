@@ -46,7 +46,8 @@ if __name__=='__main__':
     )
 
     model = VariationalAutoEncoder().to(device)
-    reconstruction_loss = nn.MSELoss()
+    reconstruction_loss = nn.BCELoss(reduction='sum')
+    # reconstruction_loss = nn.BCELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     total_batch = len(training_batches)
 
@@ -54,18 +55,18 @@ if __name__=='__main__':
     for epoch in range(training_epochs):
         avg_cost = 0.0
         for X, Y_label in training_batches:
-            X = X.to(device)
+            X = X.view(X.shape[0], -1).to(device)
             mu, log_var = model.encoder(X)
             z = model.reparameterize(mu, log_var)
             reconstructed = model.decoder(z)
 
             rec_loss = reconstruction_loss(reconstructed, X)
-            KLD_loss = torch.mean(-0.5*torch.sum(1 + log_var-mu**2 - log_var.exp(), dim=1), dim=0)
+            KLD_loss = 0.5*torch.sum(mu.pow(2) + log_var.exp() - log_var - 1)
             loss = rec_loss + KLD_loss
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            avg_cost += loss / total_batch
+            avg_cost += loss / len(training_batches.dataset)
         save_checkpoint(model, optimizer, epoch, checkpoints_path)
         print('[Epoch: {:>4}] cost = {:>.9}'.format(epoch + 1, avg_cost))
 
