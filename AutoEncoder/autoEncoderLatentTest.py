@@ -48,7 +48,7 @@ def plot_latent(X, Y):
     # figure = plt.figure(figsize=(18, 6))
     fig = sb.FacetGrid(pca_data_df, hue='label', height=8, aspect=1).map(plt.scatter, 'x', 'y').add_legend()
     # ax.figure.canvas.mpl_connect('motion_notify_event', on_click)
-    fig.canvas.mpl_connect('motion_notify_event', on_click)
+    # fig.canvas.mpl_connect('motion_notify_event', on_click)
     plt.show()
 
 if __name__ == '__main__':

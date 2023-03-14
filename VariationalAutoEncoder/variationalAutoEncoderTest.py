@@ -6,6 +6,8 @@ import torch.nn as nn
 from torchvision import transforms, datasets
 from torchvision.utils import save_image
 
+import numpy as np
+import matplotlib.pyplot as plt
 from model import VariationalAutoEncoder
 
 if __name__=='__main__':
@@ -62,6 +64,22 @@ if __name__=='__main__':
             reconstructed = torch.cat([X_test.view(-1, 1, 28, 28), reconstructed.view(-1, 1, 28, 28)], dim=3)
             save_image(reconstructed, os.path.join(reconstruction_path, f'{iter+1}.png'))
 
-        z = torch.randn(batch_size, 10).to(device)
-        sample_image = model.decoder(z)
-        save_image(sample_image.view(-1, 1, 28, 28), os.path.join(sample_path, f'sample.png'))
+        # z = torch.randn(batch_size, 10).to(device)
+        # print(z)
+        # sample_image = model.decoder(z)
+        # save_image(sample_image.view(-1, 1, 28, 28), os.path.join(sample_path, f'sample.png'))
+        
+        x_values = np.linspace(-3, 3, 20)
+        y_values = np.linspace(-3, 3, 20)
+        canvas = np.empty((28*20, 28*20))
+        for i, x_val in enumerate(x_values):
+            for j, y_val in enumerate(y_values):
+                z = np.array([[x_val, y_val] * 1]).reshape(1, 2)
+                reconstructed = model.decoder(torch.Tensor(z))
+                canvas[(20-i-1)*28:(20-i)*28, j*28:(j+1)*28] = reconstructed[0].reshape(28, 28)
+        plt.figure(figsize=(8, 10))
+        plt.imshow(canvas, origin='upper')
+        ax = plt.gca()
+        ax.axes.xaxis.set_visible(False)
+        ax.axes.yaxis.set_visible(False)
+        plt.show()
