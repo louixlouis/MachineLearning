@@ -81,6 +81,6 @@ if __name__ == '__main__':
             lossG.backward()
             optimizerG.step()
 
-            if i % 50 == 0:
-            print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f'
-                % (epoch, training_epochs, iter, len(training_batches), lossD.item(), lossG.item()))
+            if iter % 50 == 0:
+                print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f'
+                    % (epoch, training_epochs, iter, len(training_batches), lossD.item(), lossG.item()))
