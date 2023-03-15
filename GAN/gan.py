@@ -28,10 +28,12 @@ if __name__ == '__main__':
     os.makedirs(checkpoins_path, exist_ok=True)
 
     transform = transforms.Compose([
+        transforms.Resize(64),
         transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
-    trainset = datasets.DatasetFolder()
+    trainset = datasets.ImageFolder(root='./train_data', transform=transform)
     training_batches = torch.utils.data.DataLoader(
         dataset = trainset,
         batch_size = batch_size,
@@ -45,14 +47,40 @@ if __name__ == '__main__':
     optimizerD = torch.optim.Adam(discriminator.parameters(), lr=learning_rate)
     total_batch = len(training_batches)
 
+    real_label = 1
+    fake_label = 0
+    # fixed_noise = torch.randn(batch_size, 100, 1, 1, device=device)
+    # Training loop
     for epoch in range(training_epochs):
-        for i, (X, Y) in enumerate(training_batches):
+        for iter, (X, Y) in enumerate(training_batches):
+            # Update D network: maximize log(D(x)) + log(1 - D(G(z)))
             # Train with real.
-            X = X.to(device)
-            prediction = discriminator(X)
-            lossD_real = loss_function(prediction, Y)
-
             discriminator.zero_grad()
+            X = X.to(device)
+            label = torch.full((X.shape[0],), real_label, dtype=torch.float, device=device)
+            prediction = discriminator(X).view(-1)
+            lossD_real = loss_function(prediction, label)
             lossD_real.backward()
 
             # Train with fake.
+            noise = torch.randn(X.shape[0], 100, 1, 1, device=device)
+            # Generate fake image.
+            fake_image = generator(noise)
+            label.fill_(fake_label)
+            prediction = discriminator(fake_image.detach()).view(-1)
+            lossD_fake = loss_function(prediction, label)
+            lossD_fake.backward()
+            lossD = lossD_real + lossD_fake
+            optimizerD.step()
+
+            # Update G network: maximize log(D(G(z)))
+            generator.zero_grad()
+            label.fill_(real_label)
+            prediction = discriminator(fake_image).view(-1)
+            lossG = loss_function(prediction, label)
+            lossG.backward()
+            optimizerG.step()
+
+            if i % 50 == 0:
+            print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f'
+                % (epoch, training_epochs, iter, len(training_batches), lossD.item(), lossG.item()))
