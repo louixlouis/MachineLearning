@@ -7,31 +7,25 @@ class VariationalAutoEncoder(nn.Module):
         self.encoder_layer = nn.Sequential(
             nn.Linear(784, 512),
             nn.ReLU(),
-            # nn.Dropout(p=0.2),
 
             nn.Linear(512, 256),
             nn.ReLU(),
-            # nn.Dropout(p=0.2)
         )
 
         # output layer
         self.mu_layer = nn.Sequential(
             nn.Linear(256, 2),
-            # nn.ReLU()
         )
         self.log_var_layer = nn.Sequential(
             nn.Linear(256, 2),
-            # nn.ReLU()
         )
 
         self.decoder_layer = nn.Sequential(
             nn.Linear(2, 256),
             nn.ReLU(),
-            # nn.Dropout(p=0.2),
             
             nn.Linear(256, 512),
             nn.ReLU(),
-            # nn.Dropout(p=0.2)
         )
 
         # output layer
