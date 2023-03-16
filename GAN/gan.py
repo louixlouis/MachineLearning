@@ -6,6 +6,7 @@ import torch.nn as nn
 from torchvision import transforms, datasets
 
 from model import Generator, Discriminator
+
 def save_checkpoint(model, name, opt, epoch, path):   
     torch.save({
         'model':model.state_dict(),     
@@ -20,7 +21,7 @@ if __name__ == '__main__':
     if device == 'cuda':
         torch.cuda.manual_seed_all(777)
 
-    learning_rate = 0.001
+    learning_rate = 0.0001
     training_epochs = 5
     batch_size = 128
 
@@ -29,6 +30,7 @@ if __name__ == '__main__':
 
     transform = transforms.Compose([
         transforms.Resize(64),
+        transforms.CenterCrop(64),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
@@ -49,13 +51,12 @@ if __name__ == '__main__':
 
     real_label = 1
     fake_label = 0
-    # fixed_noise = torch.randn(batch_size, 100, 1, 1, device=device)
     # Training loop
     for epoch in range(training_epochs):
         for iter, (X, Y) in enumerate(training_batches):
             # Update D network: maximize log(D(x)) + log(1 - D(G(z)))
             # Train with real.
-            discriminator.zero_grad()
+            optimizerD.zero_grad()
             X = X.to(device)
             label = torch.full((X.shape[0],), real_label, dtype=torch.float, device=device)
             prediction = discriminator(X).view(-1)
@@ -74,7 +75,7 @@ if __name__ == '__main__':
             optimizerD.step()
 
             # Update G network: maximize log(D(G(z)))
-            generator.zero_grad()
+            optimizerG.zero_grad()
             label.fill_(real_label)
             prediction = discriminator(fake_image).view(-1)
             lossG = loss_function(prediction, label)

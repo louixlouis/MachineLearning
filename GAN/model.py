@@ -30,9 +30,27 @@ class Generator(nn.Module):
             nn.Tanh()
         )
 
+        self.initialize_weights()
+        
     def forward(self, x):
         out = self.layers(x)
         return out
+
+    def initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                torch.nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    torch.nn.init.constant_(m.bias, 0.01)
+            if isinstance(m, nn.Conv2d):
+                torch.nn.init.kaiming_uniform_(m.weight)
+                # torch.nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    torch.nn.init.constant_(m.bias, 0.01)
+            if isinstance(m, nn.BatchNorm2d):
+                nn.init.normal_(m.weight.data, 1.0, 0.02)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias.data, 0)
 
 class Discriminator(nn.Module):
     def __init__(self):
@@ -61,8 +79,25 @@ class Discriminator(nn.Module):
             nn.Sigmoid()
         )
 
+        self.initialize_weights()
+
     def forward(self, x):
         out = self.layers(x)
         # return out
         return out.view(-1, 1).squeeze(1)
 
+    def initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                torch.nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    torch.nn.init.constant_(m.bias, 0.01)
+            if isinstance(m, nn.Conv2d):
+                torch.nn.init.kaiming_uniform_(m.weight)
+                # torch.nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    torch.nn.init.constant_(m.bias, 0.01)
+            if isinstance(m, nn.BatchNorm2d):
+                nn.init.normal_(m.weight.data, 1.0, 0.02)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias.data, 0)

@@ -43,3 +43,15 @@ class AutoEncoder(nn.Module):
         out = self.decoder_fc(latent_vec)
         reconstructed = self.decoder_layer(out.view(out.shape[0], 32, 3, 3))
         return reconstructed
+    
+    def initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                torch.nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    torch.nn.init.constant_(m.bias, 0.01)
+            if isinstance(m, nn.Conv2d):
+                # torch.nn.init.kaiming_uniform_(m.weight)
+                torch.nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    torch.nn.init.constant_(m.bias, 0.01)
