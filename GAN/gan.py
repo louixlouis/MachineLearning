@@ -6,12 +6,12 @@ import torch.nn as nn
 from torchvision import transforms, datasets
 
 from model import Generator, Discriminator
-def save_checkpoint(model, opt, epoch, path):   
+def save_checkpoint(model, name, opt, epoch, path):   
     torch.save({
         'model':model.state_dict(),     
         'optimizer': opt.state_dict(),  
         'epoch': epoch                  
-    }, os.path.join(path, f'model_{epoch}.tar'))
+    }, os.path.join(path, f'model_{name}_{epoch}.tar'))
 
 if __name__ == '__main__':
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -21,11 +21,11 @@ if __name__ == '__main__':
         torch.cuda.manual_seed_all(777)
 
     learning_rate = 0.001
-    training_epochs = 30
+    training_epochs = 5
     batch_size = 128
 
-    checkpoins_path = './checkpoints'
-    os.makedirs(checkpoins_path, exist_ok=True)
+    checkpoints_path = './checkpoints'
+    os.makedirs(checkpoints_path, exist_ok=True)
 
     transform = transforms.Compose([
         transforms.Resize(64),
@@ -33,7 +33,7 @@ if __name__ == '__main__':
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
-    trainset = datasets.ImageFolder(root='./train_data', transform=transform)
+    trainset = datasets.ImageFolder(root='./data', transform=transform)
     training_batches = torch.utils.data.DataLoader(
         dataset = trainset,
         batch_size = batch_size,
@@ -84,3 +84,5 @@ if __name__ == '__main__':
             if iter % 50 == 0:
                 print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f'
                     % (epoch, training_epochs, iter, len(training_batches), lossD.item(), lossG.item()))
+        save_checkpoint(generator, 'G', optimizerG, epoch, checkpoints_path)
+        save_checkpoint(discriminator, 'D', optimizerD, epoch, checkpoints_path)
