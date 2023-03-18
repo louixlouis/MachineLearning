@@ -1,9 +1,14 @@
 .env
 
-# Training or Test datasets
+# Directories.
+# e.g Training or Test datasets
 data/
+dataset/
 train_data/
 test_data/
+outputs/
+samples/
+reconstruction/
 
 # Checkpoints
 checkpoints/

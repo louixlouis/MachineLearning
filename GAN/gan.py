@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 
 from torchvision import transforms, datasets
+from torchvision.utils import save_image
 
 from model import Generator, Discriminator
 
@@ -12,7 +13,7 @@ def save_checkpoint(model, name, opt, epoch, path):
         'model':model.state_dict(),     
         'optimizer': opt.state_dict(),  
         'epoch': epoch                  
-    }, os.path.join(path, f'model_{name}_{epoch}.tar'))
+    }, os.path.join(path, f'model_{name}_{epoch+1}.tar'))
 
 if __name__ == '__main__':
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -21,12 +22,15 @@ if __name__ == '__main__':
     if device == 'cuda':
         torch.cuda.manual_seed_all(777)
 
-    learning_rate = 0.0001
-    training_epochs = 5
-    batch_size = 128
+    learning_rate = 0.0002
+    training_epochs = 20
+    batch_size = 64
 
     checkpoints_path = './checkpoints'
     os.makedirs(checkpoints_path, exist_ok=True)
+
+    samples_path = './samples'
+    os.makedirs(samples_path, exist_ok=True)
 
     transform = transforms.Compose([
         transforms.Resize(64),
@@ -45,12 +49,13 @@ if __name__ == '__main__':
     generator = Generator().to(device)
     discriminator = Discriminator().to(device)
     loss_function = nn.BCELoss()
-    optimizerG = torch.optim.Adam(generator.parameters(), lr=learning_rate)
-    optimizerD = torch.optim.Adam(discriminator.parameters(), lr=learning_rate)
+    optimizerG = torch.optim.Adam(generator.parameters(), lr=learning_rate, betas=(0.5, 0.999))
+    optimizerD = torch.optim.Adam(discriminator.parameters(), lr=learning_rate, betas=(0.5, 0.999))
     total_batch = len(training_batches)
 
     real_label = 1
     fake_label = 0
+    z = torch.randn(batch_size, 100, 1, 1, device=device)
     # Training loop
     for epoch in range(training_epochs):
         for iter, (X, Y) in enumerate(training_batches):
@@ -82,8 +87,10 @@ if __name__ == '__main__':
             lossG.backward()
             optimizerG.step()
 
-            if iter % 50 == 0:
+            if (iter+1) % 100 == 0:
+                fake_image = generator(z)
+                save_image(fake_image.data, os.path.join(samples_path, f'fake_sample_{epoch+1}_{iter+1}.png'), normalize=True)
                 print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f'
-                    % (epoch, training_epochs, iter, len(training_batches), lossD.item(), lossG.item()))
+                    % (epoch+1, training_epochs, iter+1, len(training_batches), lossD.item(), lossG.item()))
         save_checkpoint(generator, 'G', optimizerG, epoch, checkpoints_path)
         save_checkpoint(discriminator, 'D', optimizerD, epoch, checkpoints_path)

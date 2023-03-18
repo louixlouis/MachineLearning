@@ -6,32 +6,32 @@ class Generator(nn.Module):
         super(Generator, self).__init__()
         self.layers = nn.Sequential(
             # input : z (100)
-            nn.ConvTranspose2d(100, 64*8, 4, stride=1, padding=0),
+            nn.ConvTranspose2d(100, 64*8, 4, stride=1, padding=0, bias=False),
             nn.BatchNorm2d(64*8),
             nn.ReLU(),
 
             # (64*8) * 4 * 4
-            nn.ConvTranspose2d(64*8, 64*4, 4, stride=2, padding=1),
+            nn.ConvTranspose2d(64*8, 64*4, 4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(64*4),
             nn.ReLU(),
 
             # (64*4) * 8 * 8
-            nn.ConvTranspose2d(64*4, 64*2, 4, stride=2, padding=1),
+            nn.ConvTranspose2d(64*4, 64*2, 4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(64*2),
             nn.ReLU(),  
             
             # (64*2) * 16 * 16
-            nn.ConvTranspose2d(64*2, 64, 4, stride=2, padding=1),
+            nn.ConvTranspose2d(64*2, 64, 4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(64),
             nn.ReLU(),
 
             # (64) * 32 * 32
-            nn.ConvTranspose2d(64, 3, 4, stride=2, padding=1),
+            nn.ConvTranspose2d(64, 3, 4, stride=2, padding=1, bias=False),
             nn.Tanh()
         )
 
         self.initialize_weights()
-        
+
     def forward(self, x):
         out = self.layers(x)
         return out
@@ -43,10 +43,11 @@ class Generator(nn.Module):
                 if m.bias is not None:
                     torch.nn.init.constant_(m.bias, 0.01)
             if isinstance(m, nn.Conv2d):
-                torch.nn.init.kaiming_uniform_(m.weight)
+                # torch.nn.init.kaiming_uniform_(m.weight)
                 # torch.nn.init.xavier_uniform_(m.weight)
+                nn.init.normal_(m.weight.data, 0.0, 0.02)
                 if m.bias is not None:
-                    torch.nn.init.constant_(m.bias, 0.01)
+                    torch.nn.init.constant_(m.bias, 0)
             if isinstance(m, nn.BatchNorm2d):
                 nn.init.normal_(m.weight.data, 1.0, 0.02)
                 if m.bias is not None:
@@ -57,25 +58,25 @@ class Discriminator(nn.Module):
         super(Discriminator, self).__init__()
         self.layers = nn.Sequential(
             # (3) * 64 * 64
-            nn.Conv2d(3, 64, 4, stride=2, padding=1),
+            nn.Conv2d(3, 64, 4, stride=2, padding=1, bias=False),
             nn.LeakyReLU(0.2),
 
             # (64) * 32 * 32
-            nn.Conv2d(64, 64*2, 4, stride=2, padding=1),
+            nn.Conv2d(64, 64*2, 4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(64*2),
             nn.LeakyReLU(0.2),
 
             # (64*2) * 16 * 16
-            nn.Conv2d(64*2, 64*4, 4, stride=2, padding=1),
+            nn.Conv2d(64*2, 64*4, 4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(64*4),
             nn.LeakyReLU(0.2),
 
             # (64*4) * 8 * 8
-            nn.Conv2d(64*4, 64*8, 4, stride=2, padding=1),
+            nn.Conv2d(64*4, 64*8, 4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(64*8),
             nn.LeakyReLU(0.2),
 
-            nn.Conv2d(64*8, 1, 4, stride=1, padding=0),
+            nn.Conv2d(64*8, 1, 4, stride=1, padding=0, bias=False),
             nn.Sigmoid()
         )
 
@@ -93,10 +94,11 @@ class Discriminator(nn.Module):
                 if m.bias is not None:
                     torch.nn.init.constant_(m.bias, 0.01)
             if isinstance(m, nn.Conv2d):
-                torch.nn.init.kaiming_uniform_(m.weight)
+                # torch.nn.init.kaiming_uniform_(m.weight)
                 # torch.nn.init.xavier_uniform_(m.weight)
+                nn.init.normal_(m.weight.data, 0.0, 0.02)
                 if m.bias is not None:
-                    torch.nn.init.constant_(m.bias, 0.01)
+                    torch.nn.init.constant_(m.bias, 0)
             if isinstance(m, nn.BatchNorm2d):
                 nn.init.normal_(m.weight.data, 1.0, 0.02)
                 if m.bias is not None:
