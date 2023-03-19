@@ -4,6 +4,7 @@
 # e.g Training or Test datasets
 data/
 dataset/
+datasets/
 train_data/
 test_data/
 outputs/
