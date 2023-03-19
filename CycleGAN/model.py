@@ -49,6 +49,7 @@ class Generator(nn.Module):
             ResidualBlock(feature_dim*4),
             ResidualBlock(feature_dim*4),
         )
+        
         # self.residual_layer_1 = ResidualBlock(feature_dim*4)
         # self.residual_layer_2 = ResidualBlock(feature_dim*4)
         # self.residual_layer_3 = ResidualBlock(feature_dim*4)
