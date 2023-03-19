@@ -29,7 +29,22 @@ if __name__ == '__main__':
 
     checkpoints_path = './checkpoints'
     os.makedirs(checkpoints_path, exist_ok=True)
+    
+    transform = transforms.Compose([
+        # transforms.Resize(int(128*1.12), Image.BICUBIC),
+        transforms.Resize(128),
+        transforms.RandomCrop(128),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
 
+    trainset = datasets.ImageFolder(root='./data', transform=transform)
+    training_batches = torch.utils.data.DataLoader(
+        dataset = trainset,
+        batch_size = batch_size,
+        shuffle = True,
+    )
     # Models.
     generator_AB = Generator().to(device)
     generator_BA = Generator().to(device)
@@ -48,3 +63,40 @@ if __name__ == '__main__':
 
     # Learning rate schedulers.
     
+    # Training loop
+    for epoch in range(training_epochs):
+        for iter, (X, Y) in enumerate(training_batches):
+            image_A = X['A'].to(device)
+            image_B = X['B'].to(device)
+
+            # Train Generators.
+            optimizerG.zero_grad()
+            
+            # Calculate identity loss
+            image_A_to_A = generator_BA(image_A)
+            loss_identity_A = loss_identity(image_A_to_A, image_A)
+            image_B_to_B = generator_AB(image_B)
+            loss_identity_B = loss_identity(image_B_to_B, image_B)
+
+            # Calculate cycle loss
+            image_A_to_B = generator_AB(image_A)
+            reconstructed_A = generator_BA(image_A_to_B)
+            loss_cycle_ABA = loss_cycle(reconstructed_A, image_A)
+            image_B_to_A = generator_BA(image_B)
+            reconstructed_B = generator_AB(image_B_to_A)
+            loss_cycle_BAB = loss_cycle(reconstructed_B, image_B)
+
+            # Calculate GAN loss
+            pred_B = discriminator_B(image_A_to_B)
+            loss_gan_A_to_B = loss_gan(pred_B, real_label)
+            pred_A = discriminator_A(image_B_to_A)
+            loss_gan_B_to_A = loss_gan(pred_A, real_label)
+
+            total_loss_G = 5.0*(loss_identity_A + loss_identity_B) + 10.0*(loss_cycle_ABA + loss_cycle_BAB) + loss_gan_A_to_B + loss_gan_B_to_A
+            total_loss_G.backward()
+            optimizerG.step()
+
+            # Train Discriminator.
+            optimizerD_A.zero_grad()
+            
+            optimizerD_B.zero_grad()

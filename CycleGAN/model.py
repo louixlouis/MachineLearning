@@ -21,11 +21,17 @@ class ResidualBlock(nn.Module):
 class Generator(nn.Module):
     def __init__(self):
         super(Generator, self).__init__()
+        feature_dim = 64
         # Input layer
+        self.input_layer = nn.Sequential(
+            nn.ReflectionPad2d(3),
+            nn.Conv2d(3, feature_dim, kernel_size=7),
+            nn.InstanceNorm2d(feature_dim),
+            nn.ReLU(inplace=True)
+        )
 
         # Encoding
         # Convolution layers
-        feature_dim = 64
         self.encoder_layers = nn.Sequential(
             nn.Conv2d(feature_dim, feature_dim*2, kernel_size=3, stride=2, padding=1),
             nn.InstanceNorm2d(feature_dim*2),
@@ -45,9 +51,9 @@ class Generator(nn.Module):
             ResidualBlock(feature_dim*4),
             ResidualBlock(feature_dim*4),
             ResidualBlock(feature_dim*4),
-            ResidualBlock(feature_dim*4),
-            ResidualBlock(feature_dim*4),
-            ResidualBlock(feature_dim*4),
+            # ResidualBlock(feature_dim*4),
+            # ResidualBlock(feature_dim*4),
+            # ResidualBlock(feature_dim*4),
         )
         
         # self.residual_layer_1 = ResidualBlock(feature_dim*4)
@@ -73,11 +79,18 @@ class Generator(nn.Module):
         )
 
         # Output layer
+        self.output_layer = nn.Sequential(
+            nn.ReflectionPad2d(3),
+            nn.Conv2d(feature_dim, 3, kernel_size=7),
+            nn.Tanh()
+        )
 
     def forward(self, x):
-        out = self.encoder_layers(x)
+        out = self.input_layer(x)
+        out = self.encoder_layers(out)
         out = self.inter_layers(out)
         out = self.decoder_layers(out)
+        out = self.output_layer(out)
         return out
 
 class Discriminator(nn.Module):
