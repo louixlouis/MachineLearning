@@ -34,13 +34,12 @@ if __name__ == '__main__':
     os.makedirs(samples_path, exist_ok=True)
 
     transform = transforms.Compose([
-        transforms.Resize(64),
-        transforms.CenterCrop(64),
         transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        # transforms.Normalize(0.5, 0.5)
     ])
 
-    trainset = datasets.ImageFolder(root='./data', transform=transform)
+    # trainset = datasets.ImageFolder(root='./data', transform=transform)
+    trainset = datasets.MNIST(root='./data', transform=transform)
     training_batches = torch.utils.data.DataLoader(
         dataset = trainset,
         batch_size = batch_size,
@@ -58,7 +57,7 @@ if __name__ == '__main__':
     fake_label = 0
 
     fixed_noise_z = torch.randn(batch_size, 100, 1, 1, device=device)
-    fixed_noise_y = torch.randint(0, 2, (batch_size,)).to(device)
+    fixed_noise_y = torch.randint(0, 10, (batch_size,)).to(device)
     # Training loop
     for epoch in range(training_epochs):
         for iter, (X, Y) in enumerate(training_batches):
@@ -75,7 +74,7 @@ if __name__ == '__main__':
 
             # Train with fake.
             noise_x = torch.randn(X.shape[0], 100, 1, 1, device=device)
-            noise_y = torch.randint(0, 2, (Y.shape[0],)).to(device)
+            noise_y = torch.randint(0, 10, (Y.shape[0],)).to(device)
 
             # Generate fake image.
             fake_image = generator(noise_x, noise_y)
