@@ -34,10 +34,10 @@ if __name__ == '__main__':
     os.makedirs(samples_path, exist_ok=True)
 
     transform = transforms.Compose([
-        # transforms.Resize(64),
-        # transforms.CenterCrop(64),
+        transforms.Resize(64),
+        transforms.CenterCrop(64),
         transforms.ToTensor(),
-        # transforms.Normalize(0.5, 0.5)
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
     trainset = datasets.ImageFolder(root='./data', transform=transform)
