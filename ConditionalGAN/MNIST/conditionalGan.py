@@ -51,45 +51,53 @@ if __name__ == '__main__':
     loss_function = nn.BCELoss()
     optimizerG = torch.optim.Adam(generator.parameters(), lr=learning_rate, betas=(0.5, 0.999))
     optimizerD = torch.optim.Adam(discriminator.parameters(), lr=learning_rate, betas=(0.5, 0.999))
-    total_batch = len(training_batches)
+    # num_batch = len(training_batches)
 
-    real_label = 1
-    fake_label = 0
+    real_label = torch.ones((batch_size, 1)).to(device)
+    fake_label = torch.zeros((batch_size, 1)).to(device)
 
-    fixed_noise_z = torch.randn(batch_size, 100, 1, 1, device=device)
-    fixed_noise_y = torch.randint(0, 10, (batch_size,)).to(device)
+    fixed_noise_z = torch.randn(100, 100, 1, 1, device=device).to(device)
+    
+    one_hot = torch.zeros(10, 10).scatter_(1, torch.tensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]).view(10, 1), 1)
+    fixed_noise_y = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 9] * 10).type(torch.LongTensor)
+    fixed_noise_y = one_hot(fixed_noise_y).to(device)
+    
+    fill = torch.zeros([10, 10, 28, 28])
+    for i in range(10):
+        fill[i, i, :, :] = 1
+
     # Training loop
     for epoch in range(training_epochs):
-        for iter, (X, Y) in enumerate(training_batches):
+        for iter, (X, Y_label) in enumerate(training_batches):
             # Update D network: maximize log(D(x)) + log(1 - D(G(z)))
             # Train with real.
             optimizerD.zero_grad()
             X = X.to(device)
-            Y = Y.to(device)
+            # batch * 10 * 28 * 28
+            Y_label = fill(Y_label).to(device)
             
-            label = torch.full((X.shape[0],), real_label, dtype=torch.float, device=device)
-            prediction = discriminator(X, Y).view(-1)
-            lossD_real = loss_function(prediction, label)
+            prediction = discriminator(X, Y_label).view(-1)
+            lossD_real = loss_function(prediction, real_label)
             lossD_real.backward()
 
             # Train with fake.
-            noise_x = torch.randn(X.shape[0], 100, 1, 1, device=device)
-            noise_y = torch.randint(0, 10, (Y.shape[0],)).to(device)
+            noise_z = torch.randn(batch_size, 100, 1, 1, device=device)
+            noise_y = (torch.rand(batch_size, 1)*10).type(torch.LongTensor).squeeze()
 
             # Generate fake image.
-            fake_image = generator(noise_x, noise_y)
-            label.fill_(fake_label)
-            prediction = discriminator(fake_image.detach(), noise_y).view(-1)
-            lossD_fake = loss_function(prediction, label)
+            noise_y = one_hot[noise_y].to(device)
+            fake_image = generator(noise_z, noise_y)
+            noise_y = fill[noise_y]
+            prediction = discriminator(fake_image.detach(), noise_y)
+            lossD_fake = loss_function(prediction, fake_label)
             lossD_fake.backward()
             lossD = lossD_real + lossD_fake
             optimizerD.step()
 
             # Update G network: maximize log(D(G(z)))
             optimizerG.zero_grad()
-            label.fill_(real_label)
-            prediction = discriminator(fake_image, noise_y).view(-1)
-            lossG = loss_function(prediction, label)
+            prediction = discriminator(fake_image, noise_y)
+            lossG = loss_function(prediction, real_label)
             lossG.backward()
             optimizerG.step()
 

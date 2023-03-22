@@ -34,8 +34,6 @@ class Generator(nn.Module):
         self.initialize_weights()
 
     def forward(self, x, y):
-        # x dim : batch * 100
-        x = x.reshape([x.shape[0], -1, 1, 1])
         # x dim : batch * 100 * 1 * 1
         x = self.x_input_layer(x)
         # y dim : batch * 10
