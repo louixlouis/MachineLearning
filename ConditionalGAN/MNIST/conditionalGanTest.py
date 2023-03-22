@@ -22,11 +22,6 @@ if __name__ == '__main__':
     outputs_path = './outputs'
     os.makedirs(outputs_path, exist_ok=True)
 
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(0.5, 0.5)
-    ])
-
     generator = Generator().to(device)
     checkpoint = torch.load(os.path.join(checkpoints_path, 'model_G_10.tar'))
     generator.load_state_dict(checkpoint['model'])
@@ -41,4 +36,4 @@ if __name__ == '__main__':
         noise_y = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]).type(torch.LongTensor)
         noise_y_G = one_hot[noise_y].to(device)
         fake_image = generator(noise_z, noise_y_G)
-        save_image(fake_image, os.path.join(outputs_path, 'smaple.png'), nrow=10, normalize=True)
+        save_image(fake_image, os.path.join(outputs_path, 'smaple.png'), nrow=10, padding=0, normalize=True)
