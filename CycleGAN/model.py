@@ -106,7 +106,8 @@ class Discriminator(nn.Module):
         super(Discriminator, self).__init__()
         feature_dim = 64
         self.conv_layers = nn.Sequential(
-            nn.Conv2d(6, feature_dim, kernel_size=4, stride=2, padding=1),
+            # nn.Conv2d(6, feature_dim, kernel_size=4, stride=2, padding=1),
+            nn.Conv2d(3, feature_dim, kernel_size=4, stride=2, padding=1),
             nn.LeakyReLU(0.2, inplace=True),
 
             nn.Conv2d(feature_dim, feature_dim*2, kernel_size=4, stride=2, padding=1),
@@ -126,5 +127,5 @@ class Discriminator(nn.Module):
 
     def forward(self, x):
         out = self.conv_layers(x)
-        out = F.avg_pool2d(out, out.size()[2:]).view(out.shape[0], -1)
+        out = F.avg_pool2d(out, out.size()[2:]).view(out.size()[0], -1)
         return out

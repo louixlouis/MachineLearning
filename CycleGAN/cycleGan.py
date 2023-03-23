@@ -10,6 +10,7 @@ from torchvision import transforms, datasets
 from torchvision.utils import save_image
 
 from model import Generator, Discriminator
+from dataLoader import ImageDataset
 
 def save_checkpoint(model, name, opt, epoch, path):   
     torch.save({
@@ -27,21 +28,31 @@ if __name__ == '__main__':
 
     learning_rate = 0.0002
     training_epochs = 20
-    batch_size = 16
+    batch_size = 1
 
     checkpoints_path = './checkpoints'
     os.makedirs(checkpoints_path, exist_ok=True)
+    samples_path = './samples'
+    os.makedirs(samples_path, exist_ok=True)
     
-    transform = transforms.Compose([
+    # transform = transforms.Compose([
+    #     transforms.Resize(int(128*1.12), Image.BICUBIC),
+    #     # transforms.Resize(128),
+    #     transforms.RandomCrop(128),
+    #     transforms.RandomHorizontalFlip(),
+    #     transforms.ToTensor(),
+    #     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    # ])
+    transform = [
         transforms.Resize(int(128*1.12), Image.BICUBIC),
         # transforms.Resize(128),
         transforms.RandomCrop(128),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ])
+    ]
 
-    trainset = datasets.ImageFolder(root='./data', transform=transform)
+    trainset = ImageDataset(root='../datasets/horse2zebra', transforms_=transform, unaligned=True)
     training_batches = torch.utils.data.DataLoader(
         dataset = trainset,
         batch_size = batch_size,
@@ -78,9 +89,9 @@ if __name__ == '__main__':
     
     # Training loop
     for epoch in range(training_epochs):
-        for iter, (X, Y) in enumerate(training_batches):
-            image_A = X['A'].to(device)
-            image_B = X['B'].to(device)
+        for iter, data in enumerate(training_batches):
+            image_A = data['A'].to(device)
+            image_B = data['B'].to(device)
 
             # Train Generators.
             optimizerG.zero_grad()
@@ -139,7 +150,8 @@ if __name__ == '__main__':
 
             if (iter+1) % 100 == 0:
                 # fake_image = generator(fixed_noise_z, fixed_noise_y)
-                # save_image(fake_image.data, os.path.join(samples_path, f'fake_sample_{epoch+1}_{iter+1}.png'), nrow=10, padding=0, normalize=True)
+                save_image(image_A_to_B.data, os.path.join(samples_path, f'fake_sample_AB_{iter+1}.png'), nrow=8, padding=0, normalize=True)
+                save_image(image_B_to_A.data, os.path.join(samples_path, f'fake_sample_BA_{iter+1}.png'), nrow=8, padding=0, normalize=True)
                 print(f'[{epoch+1:>2}/{training_epochs:>2}]\nLoss_D: {total_loss_G.item()}\tLoss_D_A: {loss_D_A.item()}\tLoss_D_B: {loss_D_B.item()}') 
         # It need to save both models?
         save_checkpoint(generator_AB, 'G_AB', optimizerG, epoch, checkpoints_path)
