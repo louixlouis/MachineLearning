@@ -40,7 +40,7 @@ if __name__ == '__main__':
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
-    trainset = datasets.ImageFolder(root='./data', transform=transform)
+    trainset = datasets.ImageFolder(root='../../dataset/celebaMWclassified', transform=transform)
     training_batches = torch.utils.data.DataLoader(
         dataset = trainset,
         batch_size = batch_size,
