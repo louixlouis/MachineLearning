@@ -19,6 +19,11 @@ class ResidualBlock(nn.Module):
         return out
 
 class Generator(nn.Module):
+    '''
+    The network with 6 residual blocks for 128 * 128
+    The network with 9 residual blocks for 256 * 256
+    while the other parts have the same structure.
+    '''
     def __init__(self):
         super(Generator, self).__init__()
         feature_dim = 64
@@ -94,6 +99,9 @@ class Generator(nn.Module):
         return out
 
 class Discriminator(nn.Module):
+    '''
+    Discriminator has the same structure for both 128*128 and 256*256.
+    '''
     def __init__(self):
         super(Discriminator, self).__init__()
         feature_dim = 64
