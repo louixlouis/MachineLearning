@@ -63,6 +63,15 @@ if __name__ == '__main__':
     optimizerD_A = torch.optim.Adam(discriminator_A.parameters(), lr=learning_rate, betas=(0.5, 0.999))
     optimizerD_B = torch.optim.Adam(discriminator_B.parameters(), lr=learning_rate, betas=(0.5, 0.999))
 
+    # Scheduler.
+    '''
+    last_epoch: default(-1). initial_lr=>lr
+    verbose: default(False). Do not print updated message
+    '''
+    schedulerG = torch.optim.lr_scheduler.LambdaLR(optimizer=optimizerG, lr_lambda=lambda epoch: 0.95 ** epoch, last_epoch=-1, verbose=False)
+    schedulerD_A = torch.optim.lr_scheduler.LambdaLR(optimizer=optimizerD_A, lr_lambda=lambda epoch: 0.95 ** epoch, last_epoch=-1, verbose=False)
+    schedulerD_B = torch.optim.lr_scheduler.LambdaLR(optimizer=optimizerD_B, lr_lambda=lambda epoch: 0.95 ** epoch, last_epoch=-1, verbose=False)
+
     # Learning rate schedulers.
     real_label = torch.ones((batch_size, 1)).to(device)
     fake_label = torch.zeros((batch_size, 1)).to(device)
@@ -137,3 +146,11 @@ if __name__ == '__main__':
         save_checkpoint(generator_BA, 'G_BA', optimizerG, epoch, checkpoints_path)
         save_checkpoint(discriminator_A, 'D_A', optimizerD_A, epoch, checkpoints_path)
         save_checkpoint(discriminator_B, 'D_B', optimizerD_B, epoch, checkpoints_path)
+
+        # Update learning rate.
+        print(f'lr_G  : {optimizerG.param_groups[0]["lr"]}')
+        print(f'lr_D_A: {optimizerD_A.param_groups[0]["lr"]}')
+        print(f'lr_D_B: {optimizerD_B.param_groups[0]["lr"]}')
+        schedulerG.step()
+        schedulerD_A.step()
+        schedulerD_B.step()
