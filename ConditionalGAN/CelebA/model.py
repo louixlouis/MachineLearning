@@ -4,7 +4,6 @@ import torch.nn as nn
 class Generator(nn.Module):
     def __init__(self):
         super(Generator, self).__init__()
-        # self.y_embedding = nn.Embedding(2, 5)
         self.x_input_layer = nn.Sequential(
             # input : z (100)
             nn.ConvTranspose2d(100, 64*4, 4, stride=1, padding=0, bias=False),
@@ -14,17 +13,12 @@ class Generator(nn.Module):
 
         self.y_input_layer = nn.Sequential(
             # input : z (100)
-            # nn.ConvTranspose2d(2, 64*8, 4, stride=1, padding=0, bias=False),
             nn.ConvTranspose2d(2, 64*4, 4, stride=1, padding=0, bias=False),
             nn.BatchNorm2d(64*4),
             nn.ReLU()
         )
 
         self.layers = nn.Sequential(
-            # nn.ConvTranspose2d(100 + 5, 64*8, 4, stride=1, padding=0, bias=False),
-            # nn.BatchNorm2d(64*8),
-            # nn.ReLU(),
-
             # (64*16) * 4 * 4
             nn.ConvTranspose2d(64*8, 64*4, 4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(64*4),
@@ -73,7 +67,6 @@ class Generator(nn.Module):
 class Discriminator(nn.Module):
     def __init__(self):
         super(Discriminator, self).__init__()
-        # self.y_embedding = nn.Embedding(2, 64*64)
         self.x_input_layer = nn.Sequential(
             # 64 * 3 * 64 * 64
             nn.Conv2d(3, 32, 4, stride=2, padding=1, bias=False),
@@ -82,14 +75,10 @@ class Discriminator(nn.Module):
 
         self.y_input_layer = nn.Sequential(
             nn.Conv2d(2, 32, 4, stride=2, padding=1, bias=False),
-            # nn.Conv2d(2, 64, 1, stride=1, padding=0, bias=False),
             nn.LeakyReLU(0.2)
         )
 
         self.layers = nn.Sequential(
-            # nn.Conv2d(3 + 1, 64, 4, stride=2, padding=1, bias=False),
-            # nn.LeakyReLU(0.2),
-
             # Concat : 64 * 64 * 32 * 32 and 64 *  
             nn.Conv2d(64, 64*2, 4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(64*2),
@@ -116,11 +105,6 @@ class Discriminator(nn.Module):
         y = self.y_input_layer(y)
         out = torch.cat([x, y], dim=1)
         out = self.layers(out)
-
-        # x = self.layer_x(x)
-        # out = torch.cat([x, y], dim=1)
-        # out = self.layers(out)
-        # return out.view(-1, 1).squeeze(1)
         return out.view(-1, 1)
 
     def initialize_weights(self):
