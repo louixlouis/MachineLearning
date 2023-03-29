@@ -16,7 +16,7 @@ checkpoints/
 checkpoints_*/
 
 # Cache
-_pycache_/
+__pycache__/
 
 # All zip files
 *.zip
