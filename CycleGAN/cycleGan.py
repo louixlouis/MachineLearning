@@ -11,6 +11,7 @@ from torchvision.utils import save_image
 
 from model import Generator, Discriminator
 from dataLoader import ImageDataset
+from utils import *
 
 def save_checkpoint(model, name, opt, epoch, path):   
     torch.save({
@@ -35,14 +36,6 @@ if __name__ == '__main__':
     samples_path = './samples'
     os.makedirs(samples_path, exist_ok=True)
     
-    # transform = transforms.Compose([
-    #     transforms.Resize(int(128*1.12), Image.BICUBIC),
-    #     # transforms.Resize(128),
-    #     transforms.RandomCrop(128),
-    #     transforms.RandomHorizontalFlip(),
-    #     transforms.ToTensor(),
-    #     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    # ])
     transform = [
         transforms.Resize(int(128*1.12), Image.BICUBIC),
         # transforms.Resize(128),
@@ -52,11 +45,12 @@ if __name__ == '__main__':
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ]
 
-    trainset = ImageDataset(root='../datasets/horse2zebra', transforms_=transform, unaligned=True)
+    trainset = ImageDataset(root='../datasets/vangogh2photo', transforms_=transform, unaligned=True)
     training_batches = torch.utils.data.DataLoader(
         dataset = trainset,
         batch_size = batch_size,
         shuffle = True,
+        drop_last=True,
     )
     # Models.
     generator_AB = Generator().to(device)
@@ -86,6 +80,10 @@ if __name__ == '__main__':
     # Learning rate schedulers.
     real_label = torch.ones((batch_size, 1)).to(device)
     fake_label = torch.zeros((batch_size, 1)).to(device)
+    
+    # Buffers.
+    image_A_to_B_buffer = ReplayBuffer()
+    image_B_to_A_buffer = ReplayBuffer()
     
     # Training loop
     for epoch in range(training_epochs):
@@ -126,6 +124,9 @@ if __name__ == '__main__':
             # Train with real
             pred_real = discriminator_A(image_A)
             loss_real = loss_gan(pred_real, real_label)
+            
+            # Train with fake.
+            image_B_to_A = image_B_to_A_buffer.push_and_pop(image_B_to_A)
             pred_fake = discriminator_A(image_B_to_A.detach())
             loss_fake = loss_gan(pred_fake, fake_label)
 
@@ -140,29 +141,35 @@ if __name__ == '__main__':
             # Train with real
             pred_real = discriminator_B(image_B)
             loss_real = loss_gan(pred_real, real_label)
+
+            # Train with fake
+            image_A_to_B = image_A_to_B_buffer.push_and_pop(image_A_to_B)
             pred_fake = discriminator_B(image_A_to_B.detach())
             loss_fake = loss_gan(pred_fake, fake_label)
 
             # Total discriminator A loss
             loss_D_B = 0.5*(loss_real + loss_fake)
             loss_D_B.backward()
-            optimizerD_A.step()
+            optimizerD_B.step()
 
             if (iter+1) % 100 == 0:
                 # fake_image = generator(fixed_noise_z, fixed_noise_y)
-                save_image(image_A_to_B.data, os.path.join(samples_path, f'fake_sample_AB_{iter+1}.png'), nrow=8, padding=0, normalize=True)
-                save_image(image_B_to_A.data, os.path.join(samples_path, f'fake_sample_BA_{iter+1}.png'), nrow=8, padding=0, normalize=True)
-                print(f'[{epoch+1:>2}/{training_epochs:>2}]\nLoss_D: {total_loss_G.item()}\tLoss_D_A: {loss_D_A.item()}\tLoss_D_B: {loss_D_B.item()}') 
+                save_image(torch.cat([image_A, image_A_to_B[-1].unsqueeze(dim=0)], dim=0).data, os.path.join(samples_path, f'fake_sample_AB_{iter+1}.png'), nrow=batch_size, padding=0, normalize=True)
+                save_image(torch.cat([image_B, image_B_to_A[-1].unsqueeze(dim=0)], dim=0).data, os.path.join(samples_path, f'fake_sample_BA_{iter+1}.png'), nrow=batch_size, padding=0, normalize=True)
+                # save_image(image_B_to_A.data, os.path.join(samples_path, f'fake_sample_BA_{iter+1}.png'), nrow=8, padding=0, normalize=True)
+                print(f'[{epoch+1:>2d}/{training_epochs:>2d}][{iter+1:>4d}/{len(training_batches):>4d}]\nLoss_G  : {total_loss_G.item():>2.4f}\nLoss_D_A: {loss_D_A.item():>2.4f}\nLoss_D_B: {loss_D_B.item():>2.4f}') 
         # It need to save both models?
         save_checkpoint(generator_AB, 'G_AB', optimizerG, epoch, checkpoints_path)
         save_checkpoint(generator_BA, 'G_BA', optimizerG, epoch, checkpoints_path)
         save_checkpoint(discriminator_A, 'D_A', optimizerD_A, epoch, checkpoints_path)
         save_checkpoint(discriminator_B, 'D_B', optimizerD_B, epoch, checkpoints_path)
-
+        
         # Update learning rate.
-        print(f'lr_G  : {optimizerG.param_groups[0]["lr"]}')
-        print(f'lr_D_A: {optimizerD_A.param_groups[0]["lr"]}')
-        print(f'lr_D_B: {optimizerD_B.param_groups[0]["lr"]}')
+        print(f'lr_G  : {optimizerG.param_groups[0]["lr"]:>.6f}')
+        print(f'lr_D_A: {optimizerD_A.param_groups[0]["lr"]:>.6f}')
+        print(f'lr_D_B: {optimizerD_B.param_groups[0]["lr"]:>.6f}')
         schedulerG.step()
         schedulerD_A.step()
         schedulerD_B.step()
+
+import numpy as np 

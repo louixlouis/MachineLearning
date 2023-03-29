@@ -60,16 +60,6 @@ class Generator(nn.Module):
             # ResidualBlock(feature_dim*4),
             # ResidualBlock(feature_dim*4),
         )
-        
-        # self.residual_layer_1 = ResidualBlock(feature_dim*4)
-        # self.residual_layer_2 = ResidualBlock(feature_dim*4)
-        # self.residual_layer_3 = ResidualBlock(feature_dim*4)
-        # self.residual_layer_4 = ResidualBlock(feature_dim*4)
-        # self.residual_layer_5 = ResidualBlock(feature_dim*4)
-        # self.residual_layer_6 = ResidualBlock(feature_dim*4)
-        # self.residual_layer_7 = ResidualBlock(feature_dim*4)
-        # self.residual_layer_8 = ResidualBlock(feature_dim*4)
-        # self.residual_layer_9 = ResidualBlock(feature_dim*4)
 
         # Decoding
         # Deconvolution layers

@@ -13,6 +13,7 @@ reconstruction/
 
 # Checkpoints
 checkpoints/
+checkpoints_*/
 
 # Cache
 _pycache_/
