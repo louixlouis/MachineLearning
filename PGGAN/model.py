@@ -131,7 +131,10 @@ class Generator(nn.Module):
         self.batch_norm = batch_norm
         self.pixel_norm= pixel_norm
 
-        self.model = nn.Sequential(self.first_block() + self.intermediate_block() +self.to_rgb_block())
+        # self.model = nn.Sequential(self.first_block() + self.intermediate_block() +self.to_rgb_block())
+        self.model = nn.Sequential()
+        self.model.add_module('first_block', self.first_block())
+        self.model.add_module('to_rgb_block', self.to_rgb_block())
 
     def first_block(self):
         layers = []
@@ -155,8 +158,8 @@ class Generator(nn.Module):
                                 weight_norm=self.weight_norm,
                                 batch_norm=self.batch_norm,
                                 pixel_norm=self.pixel_norm))
-        # return nn.Sequential(*layers)
-        return layers
+        return nn.Sequential(*layers)
+        # return layers
     
     def intermediate_block(self):
         layers = []
@@ -179,8 +182,8 @@ class Generator(nn.Module):
                                 weight_norm=self.weight_norm,
                                 batch_norm=self.batch_norm,
                                 pixel_norm=self.pixel_norm))
-        # return nn.Sequential(*layers)
-        return layers
+        return nn.Sequential(*layers)
+        # return layers
     
     def to_rgb_block(self):
         layers = []
@@ -192,12 +195,23 @@ class Generator(nn.Module):
                                 weight_norm=self.weight_norm,
                                 block=False))
         layers.append(nn.Tanh())
-        # return nn.Sequential(*layers)
-        return layers
+        return nn.Sequential(*layers)
+        # return layers
     
     def grow_model(self, resl):
+        '''
+        Initial value of resl is 2 (2*2 starts)
+
+        '''
         new_model = nn.Sequential()
-        
+        for name, module in self.model.named_children():
+            if not name=='to_rgb_block':
+                new_model.add_module(name, module)                  # Add module
+                new_model[-1].load_state_dict(module.state_dict())  # Copy trained weights
+
+        if resl >= 3 and resl <=9:
+            print(f'Growing network[{int(pow(2, resl-1))}X{int(pow(2, resl-1))} to {int(pow(2, resl))}X{int(pow(2, resl))}]')
+
     def forward(self, x):
         out = self.model(x.view(x.shape[0], -1, 1, 1))
         return out
