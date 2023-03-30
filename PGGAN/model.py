@@ -131,6 +131,8 @@ class Generator(nn.Module):
         self.batch_norm = batch_norm
         self.pixel_norm= pixel_norm
 
+        self.model = nn.Sequential(self.first_block() + self.intermediate_block() +self.to_rgb_block())
+
     def first_block(self):
         layers = []
         # First Block
@@ -153,7 +155,8 @@ class Generator(nn.Module):
                                 weight_norm=self.weight_norm,
                                 batch_norm=self.batch_norm,
                                 pixel_norm=self.pixel_norm))
-        return nn.Sequential(*layers)
+        # return nn.Sequential(*layers)
+        return layers
     
     def intermediate_block(self):
         layers = []
@@ -176,25 +179,28 @@ class Generator(nn.Module):
                                 weight_norm=self.weight_norm,
                                 batch_norm=self.batch_norm,
                                 pixel_norm=self.pixel_norm))
-        return nn.Sequential(*layers)
+        # return nn.Sequential(*layers)
+        return layers
     
     def to_rgb_block(self):
         layers = []
         layers.append(ConvBlock(in_channels=self.feature_dim, 
                                 out_channels=self.feature_dim,
-                                kernel_size=3,
+                                kernel_size=1,
                                 stride=1,
-                                padding=1,
-                                activation=self.activation,
+                                padding=0,
                                 weight_norm=self.weight_norm,
-                                batch_norm=self.batch_norm,
-                                pixel_norm=self.pixel_norm,
                                 block=False))
         layers.append(nn.Tanh())
-        return nn.Sequential(*layers)
+        # return nn.Sequential(*layers)
+        return layers
     
+    def grow_model(self, resl):
+        new_model = nn.Sequential()
+        
     def forward(self, x):
-        return x
+        out = self.model(x.view(x.shape[0], -1, 1, 1))
+        return out
 
 class Discriminator(nn.Module):
     def __init__(self) -> None:
