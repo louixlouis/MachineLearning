@@ -1,3 +1,5 @@
+import numpy as np
+
 import torch
 import torch.nn as nn
 
@@ -9,28 +11,7 @@ class PixelWiseNorm(nn.Module):
         out = x / (torch.mean(x**2, dim=1, keepdim=True) + self.eps)**0.5
         return out
     
-class UpScale(nn.Module):
-    def __init__(self) -> None:
-        super().__init__()
-    
-    def forward(self, x):
-        return x
-
-class DownScale(nn.Module):
-    def __init__(self) -> None:
-        super().__init__()
-
-    def forward(self, x):
-        return x
-
-class ConvolutionalLayer(nn.Module):
-    def __init__(self) -> None:
-        super().__init__()
-
-    def forward(self, x):
-        return x
-    
-class EqualizedConvolutionLayer(nn.Module):
+class EqualizedConv2dLayer(nn.Module):
     '''
     Equalized Convolutional Layer
     For equalized learning rate
@@ -43,7 +24,7 @@ class EqualizedConvolutionLayer(nn.Module):
                  padding=0, 
                  bias=False, 
                  initializer='kaiming') -> None:
-        super(EqualizedConvolutionLayer, self).__init__()
+        super(EqualizedConv2dLayer, self).__init__()
         self.layer = nn.Conv2d(
             in_channels=in_channels, 
             out_channels=out_channels, 
@@ -67,153 +48,147 @@ class EqualizedConvolutionLayer(nn.Module):
         out = self.layer(x.mul(self.scale))
         return out + self.bias.view(1, -1, 1, 1).expand_as(out)
     
-class ConvBlock(nn.Module):
+class DeconvBlock(nn.Module):
     '''
-    Conv Block
+    Structure
+    Init Block  : PixelNorm + Conv2d + LeakyReLU + PixelNorm
+    Other Block : Conv2d + LeakyReLU + PixelNorm
+
+    Question :
+    Why all guys use EqualizedConv2dLayer instead of Dense layer?
     '''
-    def __init__(self, 
-                 in_channels, 
-                 out_channels, 
-                 kernel_size, 
-                 stride=1, 
-                 padding=0,
-                 activation='leaky_relu', 
-                 weight_norm=False,
-                 batch_norm=False,
-                 pixel_norm=False,
-                 block=True) -> None:
-        super(ConvBlock, self).__init__()
-        layers = []
-        if weight_norm:
-            layers.append(EqualizedConvolutionLayer(in_channels=in_channels, 
-                                                    out_channels=out_channels, 
-                                                    kernel_size=kernel_size, 
-                                                    stride=stride,
-                                                    padding=padding))
-        else:
-            layers.append(nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding))
-        
-        if block:
-            if activation=='leaky_relu':
-                layers.append(nn.LeakyReLU(0.2))
-            else:
-                layers.append(nn.ReLU())
-            if batch_norm:
-                layers.append(nn.BarchNorm2d(out_channels))
-            if pixel_norm:
-                layers.append(PixelWiseNorm())
+    def __init__(
+        self, 
+        in_channels, 
+        out_channels, 
+        kernel_size, 
+        stride=1, 
+        padding=0) -> None:
+        super(DeconvBlock, self).__init__()
+        self.model = nn.Sequential(
+            EqualizedConv2dLayer(
+                in_channels=in_channels, 
+                out_channels=out_channels, 
+                kernel_size=kernel_size, 
+                stride=stride,
+                padding=padding),
+            nn.LeakyReLU(0.2),
+            PixelWiseNorm())
 
-        self.layers = nn.Sequential(*layers)
-
+        # Need to add weight initialization.
     def forward(self, x):
-        return self.layers(x)
+        return self.model(x)
+
+class G_init(nn.Module):
+    def __init__(self, in_channels, out_channels) -> None:
+        super(G_init, self).__init__()
+        '''
+        Structure : PixelNorm + DenseLayer + LeakyReLU + Conv2d + LeakyReLU + PixelNorm
+        Ouput dim : 4*4
+        '''
+        self.model = nn.Sequential(
+            PixelWiseNorm(),
+            DeconvBlock(
+                in_channels=self.in_channels, 
+                out_channels=self.out_channels,
+                kernel_size=4,
+                stride=1,
+                padding=3),
+            DeconvBlock(
+                in_channels=self.out_channels, 
+                out_channels=self.out_channels,
+                kernel_size=3,
+                stride=1,
+                padding=1))
+    def forward(self, x):
+        return self.model(x)
+
+class G_intermediate(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(G_intermediate, self).__init__()
+        self.model = nn.Sequential(
+            nn.Upsample(scale_factor=2, mode='nearest'),
+            DeconvBlock(
+                in_channels=self.in_channels, 
+                out_channels=self.out_channels,
+                kernel_size=3,
+                stride=1,
+                padding=1),
+            DeconvBlock(
+                in_channels=self.out_channels, 
+                out_channels=self.out_channels,
+                kernel_size=3,
+                stride=1,
+                padding=1))
+    def forward(self, x):
+        return self.model(x)
+
+class ToRGB(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(ToRGB, self).__init__()
+        self.model = nn.Sequential(
+            EqualizedConv2dLayer(
+                in_channels=in_channels, 
+                out_channels=out_channels, 
+                kernel_size=1, 
+                stride=1,
+                padding=0),
+            nn.Tanh()
+        )
+    def forward(self, x):
+        return self.model(x)
 
 class Generator(nn.Module):
-    def __init__(self, 
-                 latent_z_dim, 
-                 c_dim, 
-                 feature_dim,
-                 activation,
-                 weight_norm, 
-                 batch_norm,
-                 pixel_norm) -> None:
-        '''
-        Generator
-
-        '''
+    '''
+    Parameters:
+    latent_z_dim : 512 * 1
+    c_dim :
+    feature_dim :
+    activation : relu or leaky relu
+    '''
+    def __init__(
+        self, 
+        latent_dim,
+        resolution) -> None:
         super(Generator, self).__init__()
-        self.in_channels = latent_z_dim
-        self.c_dim = c_dim
-        self.feature_dim = feature_dim
+        self.num_blocks = 1
+        self.alpha = 1
+        self.fade_iters = 0
 
-        self.activation = activation
-        self.weight_norm = weight_norm
-        self.batch_norm = batch_norm
-        self.pixel_norm= pixel_norm
+        self.up_sample = nn.Upsample(scale_factor=2, mode='nearest')
+        self.model = nn.ModuleList([G_init(in_channels=latent_dim, out_channels=latent_dim)])
+        self.to_RGBs = nn.ModuleList([ToRGB(latent_dim, 3)])
+        for power in range(2, int(np.log2(resolution))):
+            if power < 6:
+                in_channels = 512
+                out_channels = 512
+                self.model.append(G_intermediate(in_channels=in_channels, out_channels=out_channels))
+            else:
+                in_channels = int(512 / pow(2, power-6))
+                out_channels = int(512 / pow(2, power-5))
+                self.model.append(G_intermediate(in_channels=in_channels, out_channels=out_channels))
+            self.to_RGBs.append(ToRGB(out_channels, 3))
 
-        # self.model = nn.Sequential(self.first_block() + self.intermediate_block() +self.to_rgb_block())
-        self.model = nn.Sequential()
-        self.model.add_module('first_block', self.first_block())
-        self.model.add_module('to_rgb_block', self.to_rgb_block())
-
-    def first_block(self):
-        layers = []
-        # First Block
-        layers.append(PixelWiseNorm())
-        layers.append(ConvBlock(in_channels=self.in_channels, 
-                                out_channels=self.feature_dim,
-                                kernel_size=4,
-                                stride=1,
-                                padding=3,
-                                activation=self.activation,
-                                weight_norm=self.weight_norm,
-                                batch_norm=self.batch_norm,
-                                pixel_norm=self.pixel_norm))
-        layers.append(ConvBlock(in_channels=self.feature_dim, 
-                                out_channels=self.feature_dim,
-                                kernel_size=3,
-                                stride=1,
-                                padding=1,
-                                activation=self.activation,
-                                weight_norm=self.weight_norm,
-                                batch_norm=self.batch_norm,
-                                pixel_norm=self.pixel_norm))
-        return nn.Sequential(*layers)
-        # return layers
-    
-    def intermediate_block(self):
-        layers = []
-        layers.append(nn.Upsample(scale_factor=2, mode='nearest'))
-        layers.append(ConvBlock(in_channels=self.feature_dim, 
-                                out_channels=self.feature_dim,
-                                kernel_size=3,
-                                stride=1,
-                                padding=1,
-                                activation=self.activation,
-                                weight_norm=self.weight_norm,
-                                batch_norm=self.batch_norm,
-                                pixel_norm=self.pixel_norm))
-        layers.append(ConvBlock(in_channels=self.feature_dim, 
-                                out_channels=self.feature_dim,
-                                kernel_size=3,
-                                stride=1,
-                                padding=1,
-                                activation=self.activation,
-                                weight_norm=self.weight_norm,
-                                batch_norm=self.batch_norm,
-                                pixel_norm=self.pixel_norm))
-        return nn.Sequential(*layers)
-        # return layers
-    
-    def to_rgb_block(self):
-        layers = []
-        layers.append(ConvBlock(in_channels=self.feature_dim, 
-                                out_channels=self.feature_dim,
-                                kernel_size=1,
-                                stride=1,
-                                padding=0,
-                                weight_norm=self.weight_norm,
-                                block=False))
-        layers.append(nn.Tanh())
-        return nn.Sequential(*layers)
-        # return layers
-    
-    def grow_model(self, resl):
-        '''
-        Initial value of resl is 2 (2*2 starts)
-
-        '''
-        new_model = nn.Sequential()
-        for name, module in self.model.named_children():
-            if not name=='to_rgb_block':
-                new_model.add_module(name, module)                  # Add module
-                new_model[-1].load_state_dict(module.state_dict())  # Copy trained weights
-
-        if resl >= 3 and resl <=9:
-            print(f'Growing network[{int(pow(2, resl-1))}X{int(pow(2, resl-1))} to {int(pow(2, resl))}X{int(pow(2, resl))}]')
+    def grow_model(self):
+        print(f'Growing model')
+        self.num_blocks += 1
 
     def forward(self, x):
-        out = self.model(x.view(x.shape[0], -1, 1, 1))
+        for prev_block in self.model[:self.num_blocks-1]:
+            x = prev_block(x)
+        # Last Generator block
+        out = self.model[self.num_blocks-1](x)
+        # Convert to RGB
+        out = self.to_RGBs[self.num_blocks-1][out]
+
+        # Fade in step.
+        if self.alpha < 1:
+            old_out = self.up_sample(x)
+            old_out = self.to_RGBs[self.num_blocks-2][old_out]
+            out = (1 - self.alpha)*old_out + self.alpha*out
+
+            # 여기 계산 방식 이해 안감
+            self.alpha += self.fade_iters
         return out
 
 class Discriminator(nn.Module):
