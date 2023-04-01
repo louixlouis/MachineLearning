@@ -90,12 +90,12 @@ class G_init(nn.Module):
             PixelWiseNorm(),
             DeconvBlock(
                 in_channels=self.in_channels, 
-                out_channels=self.out_channels,
+                out_channels=self.in_channels,
                 kernel_size=4,
                 stride=1,
                 padding=3),
             DeconvBlock(
-                in_channels=self.out_channels, 
+                in_channels=self.in_channels, 
                 out_channels=self.out_channels,
                 kernel_size=3,
                 stride=1,
@@ -110,12 +110,12 @@ class G_intermediate(nn.Module):
             nn.Upsample(scale_factor=2, mode='nearest'),
             DeconvBlock(
                 in_channels=self.in_channels, 
-                out_channels=self.out_channels,
+                out_channels=self.in_channels,
                 kernel_size=3,
                 stride=1,
                 padding=1),
             DeconvBlock(
-                in_channels=self.out_channels, 
+                in_channels=self.in_channels, 
                 out_channels=self.out_channels,
                 kernel_size=3,
                 stride=1,
@@ -146,10 +146,7 @@ class Generator(nn.Module):
     feature_dim :
     activation : relu or leaky relu
     '''
-    def __init__(
-        self, 
-        latent_dim,
-        resolution) -> None:
+    def __init__(self, latent_dim, resolution) -> None:
         super(Generator, self).__init__()
         self.num_blocks = 1
         self.alpha = 1
@@ -191,10 +188,139 @@ class Generator(nn.Module):
             self.alpha += self.fade_iters
         return out
 
+class MinibatchSTD(nn.Module):
+    def __init__(self):
+        super(MinibatchSTD, self).__init__()
+    def forward(self, x):
+        # 이게 왜 minbatch std?
+        size = list(x.size())
+        size[1] = 1
+        std = torch.std(x, dim=0)
+        std_mean = torch.mean(std)
+        return torch.cat((x, std_mean.repeat(size)), dim=1)
+
+class ConvBlock(nn.Module):
+    def __init__(
+        self, 
+        in_channels, 
+        out_channels, 
+        kernel_size, 
+        stride=1, 
+        padding=0) -> None:
+        super(ConvBlock, self).__init__()
+        self.model = nn.Sequential(
+            EqualizedConv2dLayer(
+                in_channels=in_channels, 
+                out_channels=out_channels, 
+                kernel_size=kernel_size, 
+                stride=stride,
+                padding=padding),
+            nn.LeakyReLU(0.2)
+        )
+    def forward(self, x):
+        return self.model(x)
+
+class D_init(nn.Module):
+    def __init__(self, in_channels, out_channels) -> None:
+        super(G_init, self).__init__()
+        '''
+        Structure : PixelNorm + DenseLayer + LeakyReLU + Conv2d + LeakyReLU + PixelNorm
+        Ouput dim : 4*4
+        '''
+        self.model = nn.Sequential(
+            MinibatchSTD(),
+            ConvBlock(
+                in_channels=self.in_channels, 
+                out_channels=self.out_channels,
+                kernel_size=3,
+                stride=1,
+                padding=1),
+            ConvBlock(
+                in_channels=self.out_channels, 
+                out_channels=self.out_channels,
+                kernel_size=4,
+                stride=1,
+                padding=0),
+            # It need to replace Linear to Dense Conv2d
+            nn.Flatten(),
+            nn.Linear(out_channels, 1)
+            )
+    def forward(self, x):
+        return self.model(x)
+
+class D_intermediate(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(D_intermediate, self).__init__()
+        self.model = nn.Sequential(
+            ConvBlock(
+                in_channels=self.in_channels, 
+                out_channels=self.out_channels,
+                kernel_size=3,
+                stride=1,
+                padding=1),
+            nn.LeakyReLU(0.2),
+            ConvBlock(
+                in_channels=self.out_channels, 
+                out_channels=self.out_channels,
+                kernel_size=3,
+                stride=1,
+                padding=1),
+            nn.LeakyReLU(0.2),
+            nn.AvgPool2d(kernel_size=2, stride=2)
+        )
+    def forward(self, x):
+        return self.model(x)
+
+class FromRGB(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(FromRGB, self).__init__()
+        self.model = nn.Sequential(
+            EqualizedConv2dLayer(
+                in_channels=in_channels, 
+                out_channels=out_channels, 
+                kernel_size=1, 
+                stride=1, 
+                padding=0),
+            nn.LeakyReLU(0.2)
+        )
+    def forward(self, x):
+        return self.model(x)
+
 class Discriminator(nn.Module):
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, latent_dim, resolution) -> None:
+        super(Discriminator, self).__init__()
+        self.num_blocks = 1
+        self.alpha = 1
+        self.fade_iters = 0
+
+        self.down_sample = nn.AvgPool2d(kernel_size=2, stride=2)
+        self.model = nn.ModuleList([D_init(in_channels=latent_dim, out_channels=latent_dim)])
+        self.from_RGBs = nn.ModuleList([FromRGB(3, latent_dim)])
+        for power in range(2, int(np.log2(resolution))):
+            if power < 6:
+                in_channels = 512
+                out_channels = 512
+                self.model.append(D_intermediate(in_channels=in_channels, out_channels=out_channels))
+            else:
+                in_channels = int(512 / pow(2, power-5))
+                out_channels = int(512 / pow(2, power-6))
+                self.model.append(D_intermediate(in_channels=in_channels, out_channels=out_channels))
+            self.from_RGBs.append(FromRGB(3, in_channels))
+
+    def grow_model(self):
+        print(f'Growing model')
+        self.num_blocks += 1
 
     def forward(self, x):
-        return x
+        out = self.from_RGBs[self.num_blocks-1](x)
+        out = self.model[self.num_blocks-1](out)
+        if self.alpha < 1:
+            old_out = self.down_sample(x)
+            old_out = self.from_RGBs[self.num_blocks-2](old_out)
+            out = (1 - self.alpha)*old_out + self.alpha*out
+            self.alpha += self.fade_iters
+
+        for prev_block in reversed(self.model[:self.num_blocks-1]):
+            out = prev_block(out)
+        return out
 
