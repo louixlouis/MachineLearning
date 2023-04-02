@@ -2,7 +2,7 @@ import os
 
 import torch
 import torch.nn as nn
-import torchvision.transforms as transforms
+from torchvision import transforms, datasets
 
 from model import Generator, Discriminator
 
@@ -26,8 +26,11 @@ if __name__=='__main__':
     latent_dim = 512
     training_epochs = 40
     start_epoch = 0
+    epoch_list = [5, 15, 25, 35, 40]
     batch_size_list = [16, 16, 16, 8, 4]
     resolution = 1024
+    lambda_ = 10
+    resume = False
 
     checkpoints_path = './checkpoints'
     os.makedirs(checkpoints_path, exist_ok=True)
@@ -42,20 +45,50 @@ if __name__=='__main__':
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
-    trainset = datasets.ImageFolder(root='../../dataset/celebaMWclassified', transform=transform)
-    train_dataloader = torch.utils.data.DataLoader(
-        dataset = trainset,
-        batch_size = batch_size,
-        shuffle = True,
-        drop_last = True,
-    )
-
     generator = Generator(latent_dim=latent_dim, resolution=resolution).to(device)
     discriminator = Discriminator(latent_dim=latent_dim, resolution=resolution).to(device)
     optimizer_G = torch.optim.Adam(generator.parameters(), lr=learning_rate, betas=(0, 0.999))
     optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=learning_rate, betas=(0, 0.999))
 
+    fixed_noise = torch.randn(16, latent_dim, 1, 1, device=device)
+
+    if start_epoch > 0:
+        checkpoint = torch.load(checkpoints_path())
+        # Load pretrained parameters
+
+    # # The schedule contains [num of epoches for starting each size][batch size for each size][num of epoches]
+    # schedule = [[5, 15, 25 ,35, 40],[16, 16, 16, 8, 4],[5, 5, 5, 1, 1]]
+    try:
+        num = next(iter for iter, epoch in enumerate(epoch_list) if epoch > start_epoch) - 1
+        trainset = datasets.ImageFolder(root='../../dataset/celebaMWclassified', transform=transform)
+        train_dataloader = torch.utils.data.DataLoader(
+            dataset = trainset,
+            batch_size = batch_size_list[num],
+            shuffle = True,
+            # drop_last = True,
+        )    
+        total_iter = len(trainset) / batch_size_list[num]
+        generator.fade_iters = (1 - generator.alpha) / (batch_size_list[num+1] - start_epoch) / (2*total_iter)
+        discriminator.fade_iters = (1 - discriminator.alpha) / (batch_size_list[num+1] - start_epoch) / (2*total_iter)
+    except:
+        trainset = datasets.ImageFolder(root='../../dataset/celebaMWclassified', transform=transform)
+        train_dataloader = torch.utils.data.DataLoader(
+            dataset = trainset,
+            batch_size = batch_size_list[-1],
+            shuffle = True,
+            # drop_last = True,
+        ) 
+        total_iter = len(trainset) / batch_size_list[-1]
+        if generator.alpha < 1:
+            generator.fade_iters = (1 - generator.alpha) / (training_epochs - start_epoch) / (2*total_iter)
+            discriminator.fade_iters = (1 - discriminator.alpha) / (training_epochs - start_epoch) / (2*total_iter)
+
+    
     for epoch in range(start_epoch, training_epochs):
+        if epoch in epoch_list:
+            if pow(2, generator.num_blocks) < resolution:
+                pass
+            
         for iter, samples in enumerate(train_dataloader):
             # Train Disriminator
             optimizer_D.zero_grad()
