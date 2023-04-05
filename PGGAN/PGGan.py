@@ -61,8 +61,6 @@ if __name__=='__main__':
         checkpoint = torch.load(checkpoints_path())
         # Load pretrained parameters
 
-    # # The schedule contains [num of epoches for starting each size][batch size for each size][num of epoches]
-    # schedule = [[5, 15, 25 ,35, 40],[16, 16, 16, 8, 4],[5, 5, 5, 1, 1]]
     try:
         num = next(iter for iter, epoch in enumerate(epoch_list) if epoch > start_epoch) - 1
         trainset = datasets.ImageFolder(root='../../dataset/celebaMWclassified', transform=transform)
@@ -88,10 +86,11 @@ if __name__=='__main__':
             generator.fade_iters = (1 - generator.alpha) / (training_epochs - start_epoch) / (2*total_iter)
             discriminator.fade_iters = (1 - discriminator.alpha) / (training_epochs - start_epoch) / (2*total_iter)
 
+    # Losses
     iter_loss_G = 0.0
     iter_loss_D = 0.0
-    epoch_losses_G = []
-    epoch_losses_D = []
+    # epoch_losses_G = []
+    # epoch_losses_D = []
     iter_num = 0
     for epoch in range(start_epoch, training_epochs):
         generator.train()
@@ -158,10 +157,9 @@ if __name__=='__main__':
             loss_G = -fake_pred.mean()
             loss_G.backward()
             optimizer_G.step()
-            iter_loss_G += append(loss_G.item()
+            iter_loss_G += loss_G.item()
 
             iter_num += 1
-
             if iter % 500 == 0:
                 iter_loss_G /= iter_num
                 iter_loss_D /= iter_num
@@ -170,7 +168,7 @@ if __name__=='__main__':
                 iter_num = 0
                 iter_loss_G = 0.0
                 iter_loss_D = 0.0
-                 
+                
         save_checkpoint(
             model=generator, 
             name='G', 
