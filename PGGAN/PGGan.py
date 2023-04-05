@@ -32,10 +32,9 @@ if __name__=='__main__':
 
     epoch_list = [5, 15, 25, 35, 40]
     batch_size_list = [16, 16, 16, 8, 4]
-    growing_time_list = [5, 5, 5, 1, 1]
+    growing_time_list = [5, 5, 5, 1, 1]     # 뭔가 이상함.
     resolution = 1024
     lambda_ = 10
-    resume = False
 
     checkpoints_path = './checkpoints'
     os.makedirs(checkpoints_path, exist_ok=True)
@@ -58,7 +57,7 @@ if __name__=='__main__':
     fixed_latent_z = torch.randn(16, latent_dim, 1, 1, device=device)
 
     if start_epoch > 0:
-        checkpoint = torch.load(checkpoints_path())
+        checkpoint = torch.load(checkpoints_path)
         # Load pretrained parameters
 
     try:
@@ -71,8 +70,8 @@ if __name__=='__main__':
             # drop_last = True,
         )    
         total_iter = len(trainset) / batch_size_list[num]
-        generator.fade_iters = (1 - generator.alpha) / (batch_size_list[num+1] - start_epoch) / (2*total_iter)
-        discriminator.fade_iters = (1 - discriminator.alpha) / (batch_size_list[num+1] - start_epoch) / (2*total_iter)
+        generator.alpha_step = (1 - generator.alpha) / (batch_size_list[num+1] - start_epoch) / (2*total_iter)
+        discriminator.alpha_step = (1 - discriminator.alpha) / (batch_size_list[num+1] - start_epoch) / (2*total_iter)
     except:
         trainset = datasets.ImageFolder(root='../../dataset/celebaMWclassified', transform=transform)
         train_dataloader = torch.utils.data.DataLoader(
@@ -83,14 +82,12 @@ if __name__=='__main__':
         ) 
         total_iter = len(trainset) / batch_size_list[-1]
         if generator.alpha < 1:
-            generator.fade_iters = (1 - generator.alpha) / (training_epochs - start_epoch) / (2*total_iter)
-            discriminator.fade_iters = (1 - discriminator.alpha) / (training_epochs - start_epoch) / (2*total_iter)
+            generator.alpha_step = (1 - generator.alpha) / (training_epochs - start_epoch) / (2*total_iter)
+            discriminator.alpha_step = (1 - discriminator.alpha) / (training_epochs - start_epoch) / (2*total_iter)
 
     # Losses
     iter_loss_G = 0.0
     iter_loss_D = 0.0
-    # epoch_losses_G = []
-    # epoch_losses_D = []
     iter_num = 0
     for epoch in range(start_epoch, training_epochs):
         generator.train()
@@ -101,19 +98,20 @@ if __name__=='__main__':
             the model's network should be grown up
             '''
             if pow(2, generator.num_blocks + 1 ) < resolution:
-                # Why 2**(num_blocks + 1) ?
                 '''
                 list.index(value) : find the first index of value
                 list.where(value) : find all the indices of value.
                 '''
                 num = epoch_list.index(epoch)
                 batch_size = batch_size_list[num]
+                # Change batch size.
                 # train_dataloader = torch.utils.data.DataLoader(root='../../dataset/celebaMWclassified', transform=transform)
                 train_dataloader = datasets.ImageFolder(root='../../dataset/celebaMWclassified', transform=transform)
                 total_iter = len(trainset) / batch_size
                 generator.grow_model(growing_time_list[num]*total_iter)
-                current_resolution = pow(2, generator.num_block2 + 1)
-                print(f'Current output resuloution : {current_resolution} X {current_resolution}')
+                generator.grow_model(growing_time_list[num]*total_iter)
+                current_resolution = pow(2, generator.num_blocks + 1)
+                # print(f'Current output resuloution : {current_resolution} X {current_resolution}')
         
         print(f'Epoch : [{epoch}/{training_epochs}]')
         data_bar = tqdm(train_dataloader)

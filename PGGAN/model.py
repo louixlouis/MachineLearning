@@ -5,6 +5,9 @@ import torch.nn as nn
 
 from customLayers import *
 
+####
+# Generator
+####
 class G_init(nn.Module):
     def __init__(self, in_channels, out_channels) -> None:
         super(G_init, self).__init__()
@@ -67,34 +70,44 @@ class ToRGB(nn.Module):
 class Generator(nn.Module):
     '''
     Parameters:
-    latent_z_dim : 512 * 1
-    c_dim :
-    feature_dim :
-    activation : relu or leaky relu
+    latent_z_dim : 
     '''
     def __init__(self, latent_dim, resolution) -> None:
         super(Generator, self).__init__()
-        self.num_blocks = 1
+        self.num_blocks = 1     # Number of generator blocks (G_init, G_int, G_int, ...)
         self.alpha = 1
-        self.fade_iters = 0
+        self.alpha_step = 0
 
+        # Initial Structure
         self.up_sample = nn.Upsample(scale_factor=2, mode='nearest')
         self.model = nn.ModuleList([G_init(in_channels=latent_dim, out_channels=latent_dim)])
         self.to_RGBs = nn.ModuleList([ToRGB(latent_dim, 3)])
+
+        # Add intermediate blocks.
         for power in range(2, int(np.log2(resolution))):
             if power < 6:
+                '''
+                512x8x8 -> 512x16x16 -> 512x32x32
+                '''
                 in_channels = 512
                 out_channels = 512
                 self.model.append(G_intermediate(in_channels=in_channels, out_channels=out_channels))
             else:
+                '''
+                channels?
+                64x64 -> 128x128 -> 256x256 -> 512x512 -> 1024x1024
+                '''
                 in_channels = int(512 / pow(2, power-6))
                 out_channels = int(512 / pow(2, power-5))
                 self.model.append(G_intermediate(in_channels=in_channels, out_channels=out_channels))
             self.to_RGBs.append(ToRGB(out_channels, 3))
 
-    def grow_model(self):
-        print(f'Growing model')
+    def grow_model(self, inverse_step):
+        self.alpha_step = 1 / inverse_step
+        self.alpha = self.alpha_step
         self.num_blocks += 1
+
+        print(f'Growing generator : {pow(2, self.num_blocks+1)}x{pow(2, self.num_blocks+1)} to {pow(2, self.num_blocks+2)}x{pow(2, self.num_blocks+2)}')
 
     def forward(self, x):
         for prev_block in self.model[:self.num_blocks-1]:
@@ -110,10 +123,12 @@ class Generator(nn.Module):
             old_out = self.to_RGBs[self.num_blocks-2][old_out]
             out = (1 - self.alpha)*old_out + self.alpha*out
 
-            # 여기 계산 방식 이해 안감
-            self.alpha += self.fade_iters
+            self.alpha += self.alpha_step
         return out
 
+####
+# Discriminator
+####
 class D_init(nn.Module):
     def __init__(self, in_channels, out_channels) -> None:
         super(D_init, self).__init__()
@@ -185,7 +200,7 @@ class Discriminator(nn.Module):
         super(Discriminator, self).__init__()
         self.num_blocks = 1
         self.alpha = 1
-        self.fade_iters = 0
+        self.alpha_step = 0
 
         self.down_sample = nn.AvgPool2d(kernel_size=2, stride=2)
         self.model = nn.ModuleList([D_init(in_channels=latent_dim, out_channels=latent_dim)])
@@ -201,9 +216,12 @@ class Discriminator(nn.Module):
                 self.model.append(D_intermediate(in_channels=in_channels, out_channels=out_channels))
             self.from_RGBs.append(FromRGB(3, in_channels))
 
-    def grow_model(self):
-        print(f'Growing model')
+    def grow_model(self, inverse_step):
+        self.alpha_step = 1 / inverse_step
+        self.alpha = self.alpha_step
         self.num_blocks += 1
+
+        print(f'Growing discriminator : {pow(2, self.num_blocks+1)}x{pow(2, self.num_blocks+1)} to {pow(2, self.num_blocks+2)}x{pow(2, self.num_blocks+2)}')
 
     def forward(self, x):
         out = self.from_RGBs[self.num_blocks-1](x)
@@ -212,7 +230,7 @@ class Discriminator(nn.Module):
             old_out = self.down_sample(x)
             old_out = self.from_RGBs[self.num_blocks-2](old_out)
             out = (1 - self.alpha)*old_out + self.alpha*out
-            self.alpha += self.fade_iters
+            self.alpha += self.alpha_step
 
         for prev_block in reversed(self.model[:self.num_blocks-1]):
             out = prev_block(out)
