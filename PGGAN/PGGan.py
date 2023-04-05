@@ -174,16 +174,16 @@ if __name__=='__main__':
             name='G', 
             opt=optimizer_G, 
             epoch=epoch, 
-            num_blocks=0, 
-            alpha=1, 
+            num_blocks=generator.num_blocks, 
+            alpha=generator.alpha, 
             path=checkpoints_path)
         save_checkpoint(
             model=discriminator,
             name='D', 
             opt=optimizer_D, 
             epoch=epoch, 
-            num_blocks=0, 
-            alpha=1, 
+            num_blocks=None, 
+            alpha=None, 
             path=checkpoints_path)
 
         with torch.no_grad():

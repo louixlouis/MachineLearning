@@ -89,14 +89,14 @@ class G_init(nn.Module):
         self.model = nn.Sequential(
             PixelWiseNorm(),
             DeconvBlock(
-                in_channels=self.in_channels, 
-                out_channels=self.in_channels,
+                in_channels=in_channels, 
+                out_channels=in_channels,
                 kernel_size=4,
                 stride=1,
                 padding=3),
             DeconvBlock(
-                in_channels=self.in_channels, 
-                out_channels=self.out_channels,
+                in_channels=in_channels, 
+                out_channels=out_channels,
                 kernel_size=3,
                 stride=1,
                 padding=1))
@@ -109,14 +109,14 @@ class G_intermediate(nn.Module):
         self.model = nn.Sequential(
             nn.Upsample(scale_factor=2, mode='nearest'),
             DeconvBlock(
-                in_channels=self.in_channels, 
-                out_channels=self.in_channels,
+                in_channels=in_channels, 
+                out_channels=in_channels,
                 kernel_size=3,
                 stride=1,
                 padding=1),
             DeconvBlock(
-                in_channels=self.in_channels, 
-                out_channels=self.out_channels,
+                in_channels=in_channels, 
+                out_channels=out_channels,
                 kernel_size=3,
                 stride=1,
                 padding=1))
@@ -230,14 +230,14 @@ class D_init(nn.Module):
         self.model = nn.Sequential(
             MinibatchSTD(),
             ConvBlock(
-                in_channels=self.in_channels, 
-                out_channels=self.out_channels,
+                in_channels=in_channels, 
+                out_channels=out_channels,
                 kernel_size=3,
                 stride=1,
                 padding=1),
             ConvBlock(
-                in_channels=self.out_channels, 
-                out_channels=self.out_channels,
+                in_channels=out_channels, 
+                out_channels=out_channels,
                 kernel_size=4,
                 stride=1,
                 padding=0),
@@ -253,15 +253,15 @@ class D_intermediate(nn.Module):
         super(D_intermediate, self).__init__()
         self.model = nn.Sequential(
             ConvBlock(
-                in_channels=self.in_channels, 
-                out_channels=self.out_channels,
+                in_channels=in_channels, 
+                out_channels=out_channels,
                 kernel_size=3,
                 stride=1,
                 padding=1),
             nn.LeakyReLU(0.2),
             ConvBlock(
-                in_channels=self.out_channels, 
-                out_channels=self.out_channels,
+                in_channels=out_channels, 
+                out_channels=out_channels,
                 kernel_size=3,
                 stride=1,
                 padding=1),
