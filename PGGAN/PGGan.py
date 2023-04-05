@@ -170,7 +170,7 @@ if __name__=='__main__':
                 iter_num = 0
                 iter_loss_G = 0.0
                 iter_loss_D = 0.0
-                
+                 
         save_checkpoint(
             model=generator, 
             name='G', 
