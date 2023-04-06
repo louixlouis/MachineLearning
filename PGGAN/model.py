@@ -115,12 +115,12 @@ class Generator(nn.Module):
         # Last Generator block
         out = self.model[self.num_blocks-1](x)
         # Convert to RGB
-        out = self.to_RGBs[self.num_blocks-1][out]
+        out = self.to_RGBs[self.num_blocks-1](out)
 
         # Fade in step.
         if self.alpha < 1:
             old_out = self.up_sample(x)
-            old_out = self.to_RGBs[self.num_blocks-2][old_out]
+            old_out = self.to_RGBs[self.num_blocks-2](old_out)
             out = (1 - self.alpha)*old_out + self.alpha*out
 
             self.alpha += self.alpha_step
