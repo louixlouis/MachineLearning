@@ -146,7 +146,7 @@ if __name__=='__main__':
                 samples = samples[0].to(device)
             latent_z = torch.randn(samples.shape[0], latent_dim, 1, 1, device=device)
             fake_image = generator(latent_z)
-            fake_pred = discriminator(fake_iamge.detach())
+            fake_pred = discriminator(fake_image.detach())
             real_pred = disriminator(samples)
 
             # Calculate gradient penalty.
