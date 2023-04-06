@@ -30,6 +30,8 @@ class EqualizedConv2dLayer(nn.Module):
     '''
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0):
         super(EqualizedConv2dLayer, self).__init__()
+        self.stride = stride
+        self.padding = padding
         self.weight = Parameter(torch.Tensor(out_channels, in_channels, kernel_size, kernel_size))
         self.bias = Parameter(torch.Tensor(out_channels))
         self.scale = np.sqrt(2 / (in_channels * kernel_size * kernel_size))

@@ -37,7 +37,7 @@ if __name__=='__main__':
     resolution = 1024
     lambda_ = 10
 
-    data_root = '../../datasets/celeba_hq'
+    data_root = '../datasets/celeba_hq'
 
     checkpoints_path = './checkpoints'
     os.makedirs(checkpoints_path, exist_ok=True)
@@ -103,9 +103,9 @@ if __name__=='__main__':
     iter_loss_G = 0.0
     iter_loss_D = 0.0
     iter_num = 0
+    current_resolution = pow(2, generator.num_blocks + 1)
     for epoch in range(start_epoch, training_epochs):
         generator.train()
-
         if epoch in epoch_list:
             '''
             if current epoch number is included in epoch_list,
@@ -144,7 +144,7 @@ if __name__=='__main__':
                 samples = F.interpolate(samples[0], size=current_resolution).to(device)
             else:
                 samples = samples[0].to(device)
-            latent_z = torch.randn(samples.shape[0], latent_dim, 1, 1, device=deivce)
+            latent_z = torch.randn(samples.shape[0], latent_dim, 1, 1, device=device)
             fake_image = generator(latent_z)
             fake_pred = discriminator(fake_iamge.detach())
             real_pred = disriminator(samples)
