@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import transforms, datasets
+from torchvision.utils import save_image, make_grid
 
 from model import Generator, Discriminator
 
@@ -36,8 +37,12 @@ if __name__=='__main__':
     resolution = 1024
     lambda_ = 10
 
+    data_root = '../../datasets/celeba_hq'
+
     checkpoints_path = './checkpoints'
     os.makedirs(checkpoints_path, exist_ok=True)
+    checkpoint_G_path = os.path.join(checkpoints_path, '')
+    checkpoint_D_path = os.path.join(checkpoints_path, '')
 
     samples_path = './samples'
     os.makedirs(samples_path, exist_ok=True)
@@ -57,28 +62,37 @@ if __name__=='__main__':
     fixed_latent_z = torch.randn(16, latent_dim, 1, 1, device=device)
 
     if start_epoch > 0:
-        checkpoint = torch.load(checkpoints_path)
-        # Load pretrained parameters
+        checkpoint_G = torch.load(checkpoint_G_path)
+        generator.load_state_dict(checkpoint_G['model'])
+        generator.num_blocks = checkpoint_G['num_blocks']
+        generator.alpha = checkpoint_G['alpha']
+        optimizer_G.load_state_dict(checkpoint_G['optimizer'])
+        
+        checkpoint_D = torch.load(checkpoint_D_path)
+        discriminator.load_state_dict(checkpoint_D['model'])
+        discriminator.num_blocks = checkpoint_D['num_blocks']
+        discriminator.alpha = checkpoint_D['alpha']
+        optimizer_D.load_state_dict(checkpoint_D['optimizer'])
 
     try:
         num = next(iter for iter, epoch in enumerate(epoch_list) if epoch > start_epoch) - 1
-        trainset = datasets.ImageFolder(root='../../dataset/celebaMWclassified', transform=transform)
+        trainset = datasets.ImageFolder(root=data_root, transform=transform)
         train_dataloader = torch.utils.data.DataLoader(
             dataset = trainset,
             batch_size = batch_size_list[num],
             shuffle = True,
-            # drop_last = True,
+            drop_last = True,
         )    
         total_iter = len(trainset) / batch_size_list[num]
         generator.alpha_step = (1 - generator.alpha) / (batch_size_list[num+1] - start_epoch) / (2*total_iter)
         discriminator.alpha_step = (1 - discriminator.alpha) / (batch_size_list[num+1] - start_epoch) / (2*total_iter)
     except:
-        trainset = datasets.ImageFolder(root='../../dataset/celebaMWclassified', transform=transform)
+        trainset = datasets.ImageFolder(root=data_root, transform=transform)
         train_dataloader = torch.utils.data.DataLoader(
             dataset = trainset,
             batch_size = batch_size_list[-1],
             shuffle = True,
-            # drop_last = True,
+            drop_last = True,
         ) 
         total_iter = len(trainset) / batch_size_list[-1]
         if generator.alpha < 1:
@@ -103,11 +117,14 @@ if __name__=='__main__':
                 list.where(value) : find all the indices of value.
                 '''
                 num = epoch_list.index(epoch)
-                batch_size = batch_size_list[num]
                 # Change batch size.
-                # train_dataloader = torch.utils.data.DataLoader(root='../../dataset/celebaMWclassified', transform=transform)
-                train_dataloader = datasets.ImageFolder(root='../../dataset/celebaMWclassified', transform=transform)
-                total_iter = len(trainset) / batch_size
+                train_dataloader = torch.utils.data.DataLoader(
+                    dataset = trainset,
+                    batch_size = batch_size_list[num],
+                    shuffle = True,
+                    drop_last = True,
+                )
+                total_iter = len(trainset) / batch_size_list[num]
                 generator.grow_model(growing_time_list[num]*total_iter)
                 generator.grow_model(growing_time_list[num]*total_iter)
                 current_resolution = pow(2, generator.num_blocks + 1)
@@ -180,10 +197,16 @@ if __name__=='__main__':
             name='D', 
             opt=optimizer_D, 
             epoch=epoch, 
-            num_blocks=None, 
-            alpha=None, 
+            num_blocks=discriminator.num_blocks, 
+            alpha=discriminator.alpha, 
             path=checkpoints_path)
 
         with torch.no_grad():
             generator.eval()
             fake_image = generator(fixed_latent_z)
+            save_image(
+                fake_image.data, 
+                os.path.join(samples_path, f'fake_sample_{epoch+1}_{current_resolution}x{current_resolution}.png'), 
+                nrow=4, 
+                padding=0, 
+                normalize=True)
