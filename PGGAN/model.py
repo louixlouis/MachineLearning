@@ -139,7 +139,7 @@ class D_init(nn.Module):
         self.model = nn.Sequential(
             MinibatchSTD(),
             ConvBlock(
-                in_channels=in_channels, 
+                in_channels=in_channels + 1, # why? 
                 out_channels=out_channels,
                 kernel_size=3,
                 stride=1,
