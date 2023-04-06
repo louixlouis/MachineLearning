@@ -150,7 +150,8 @@ if __name__=='__main__':
             real_pred = discriminator(samples)
 
             # Calculate gradient penalty.
-            eps = torch.rand(samples.shape[0], 1, 1, 1, deivice=device)
+            # eps = torch.rand(samples.size(0), 1, 1, 1, deivice=device)
+            eps = torch.rand(samples.shape[0], 1, 1, 1).to(device)
             eps = eps.expand_as(samples)
             x_hat = eps*samples + (1-eps)*fake_image.detach()
             x_hat.requires_grad = True
