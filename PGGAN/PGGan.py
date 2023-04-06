@@ -157,7 +157,7 @@ if __name__=='__main__':
             x_hat.requires_grad = True
             x_hat_pred = discriminator(x_hat)
             gradient = torch.autograd.grad(outputs=x_hat_pred.sum(), inputs=x_hat, create_graph=True)[0]
-            gradient_norm = grad.view(samples.shape[0], -1).norm(2, dim=1)
+            gradient_norm = gradient.view(samples.shape[0], -1).norm(2, dim=1)
             gradient_penalty = lambda_*(pow(2, (gradient_norm - 1))).mean()
 
             loss_D = fake_pred.mean() - real_pred.mean() + gradient_penalty
