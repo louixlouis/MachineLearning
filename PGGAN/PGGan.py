@@ -126,7 +126,7 @@ if __name__=='__main__':
                 )
                 total_iter = len(trainset) / batch_size_list[num]
                 generator.grow_model(growing_time_list[num]*total_iter)
-                generator.grow_model(growing_time_list[num]*total_iter)
+                discriminator.grow_model(growing_time_list[num]*total_iter)
                 current_resolution = pow(2, generator.num_blocks + 1)
                 # print(f'Current output resuloution : {current_resolution} X {current_resolution}')
         
