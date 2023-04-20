@@ -16,7 +16,6 @@ class MinibatchSTD(nn.Module):
     def __init__(self):
         super(MinibatchSTD, self).__init__()
     def forward(self, x):
-        # 이게 왜 minbatch std?
         size = list(x.size())
         size[1] = 1
         std = torch.std(x, dim=0)
