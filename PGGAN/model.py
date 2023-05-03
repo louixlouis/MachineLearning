@@ -143,7 +143,7 @@ class D_init(nn.Module):
                 out_channels=out_channels,
                 kernel_size=3,
                 stride=1,
-                padding=1),
+                padding=
             ConvBlock(
                 in_channels=out_channels, 
                 out_channels=out_channels,

@@ -22,7 +22,22 @@ class MinibatchSTD(nn.Module):
         std = torch.std(x, dim=0)
         std_mean = torch.mean(std)
         return torch.cat((x, std_mean.repeat(size)), dim=1)
-    
+
+class UpScale2d(nn.module):
+    '''
+    Upsampling 쓰면 안되나?
+    '''
+    def upscale2d():
+        pass
+
+class DownScale2d(nn.module):
+    '''
+    Downsampling 쓰면 안되나?
+    '''
+    def downscale2d():
+        pass
+
+
 class EqualizedConv2d(nn.Module):
     '''
     '''
@@ -31,6 +46,15 @@ class EqualizedConv2d(nn.Module):
     def forward(self, x):
         return x
 
+class NoiseLayer(nn.module):
+    '''
+    '''
+    def __init__(self, out_channels):
+        super(NoiseLayer, self).__init__()
+    
+    def forward(self, x):
+        return x
+    
 class DeconvBlock(nn.Module):
     '''
     '''
