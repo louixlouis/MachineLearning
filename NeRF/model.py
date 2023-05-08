@@ -36,4 +36,6 @@ class NeRF(nn.Module):
         dim = dimension along which to split the tensor.
         '''
         in_position, in_view = torch.split(x, [self.in_channels, self.in_views], dim=-1)
-        
+    
+    def temp():
+        pass
