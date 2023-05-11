@@ -13,7 +13,7 @@ class PixelWiseNorm(nn.Module):
         return x / torch.sqrt(torch.sum(x**2, dim=1, keepdim=True) + self.eps)
 
 class MinibatchSTD(nn.Module):
-    def __init__(self):
+    def __init__(self) -> None:
         super(MinibatchSTD, self).__init__()
     def forward(self, x):
         # 이게 왜 minbatch std?
@@ -38,13 +38,32 @@ class DownScale2d(nn.module):
         pass
 
 
-class EqualizedConv2d(nn.Module):
+class EqualizedLinear(nn.Module):
     '''
     '''
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, paddding=0):
-        super(EqualizedConv2d, self).__init__()
+    def __init__(self, in_channels, out_channels, bias=True, gain=2**0.5, w_scale=False, lr_multiplier=1) -> None:
+        super(EqualizedLinear, self).__init__()
+        # He initialization.
+        He_std = gain * in_channels**(-0.5)
+        if w_scale:
+            init_std = 1.0 / lr_multiplier
+            self.w_mul = He_std * lr_multiplier
+        else :
+            init_std = He_std / lr_multiplier
+            self.w_mul = lr_multiplier
+        self.weight = torch.nn.Parameter(torch.randn(out_channels, in_channels) * init_std)
+        if bias:
+            self.bias = torch.nn.Parameter(torch.zeros(out_channels))
+            self.b_mul = lr_multiplier
+        else :
+            self.bias = None
+            
     def forward(self, x):
-        return x
+        bias = self.bias
+        if bias is not None:
+            bias = bias * self.b_mul
+        out = F.linear(x, self.weight * self.w_mul, bias)
+        return out
 
 class NoiseLayer(nn.module):
     '''
