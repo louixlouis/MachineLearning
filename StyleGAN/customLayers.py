@@ -4,13 +4,38 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+class BlurLayer(nn.Module):
+    '''
+    what does do this Layer?
+    '''
+    def __init__(self, kernel, stride=1, normalize=True, flip=False) -> None:
+        super(BlurLayer, self).__init__()
+        if kernel is None:
+            kernel = [1, 2, 1]
+        kernel = torch.tensor(kernel, dtype=torch.float32)
+        kernel = kernel[:, None] * kernel[None, :]
+        kernel = kernel[None, None]
+
+        if normalize:
+            kernel = kernel / kernel.sum()
+        if flip:
+            kernel = kernel[:, :, ::-1, ::-1]
+            self.register_buffer('kernel', kernel)
+            self.stride = stride
+
+    def forward(self, x):
+        kernel = self.kernel.expand(x.size(1), -1, -1, -1)
+        out = F.conv2d(x, kernel, stride=self.stride, padding=int((self.kernel.size(2) - 1) / 2), groups=x.size(1))
+        return out
+    
 class PixelWiseNorm(nn.Module):
     def __init__(self) -> None:
         super(PixelWiseNorm, self).__init__()
         self.eps = 1e-8
     def forward(self, x):
         # What is the difference bewteen sqrt and rsqrt.
-        return x / torch.sqrt(torch.sum(x**2, dim=1, keepdim=True) + self.eps)
+        # return x / torch.sqrt(torch.sum(x**2, dim=1, keepdim=True) + self.eps)
+        return x * torch.rsqrt(torch.mean(x**2, dim=1, keepdim=True) + self.eps)
 
 class MinibatchSTD(nn.Module):
     def __init__(self) -> None:
@@ -27,6 +52,19 @@ class UpScale2d(nn.module):
     '''
     Upsampling 쓰면 안되나?
     '''
+    def __init__(self, factor=2, gain=1) -> None:
+        super(UpScale2d, self).__init__()
+        self.factor = factor
+        self.gain = gain
+    
+    def forward(self, x):
+        out = x * self.gain
+        shape = out.shape
+        out = out.view(shape[0], shape[1], shape[2], 1, shape[3], 1).expand(-1, -1, -1, self.factor, -1, self.factor)
+        out = out.contiguous().view(shape[0], shape[1], self.factor*shape[2], self.factor*shape[3])
+        return out
+    
+    @staticmethod
     def upscale2d():
         pass
 
@@ -34,9 +72,24 @@ class DownScale2d(nn.module):
     '''
     Downsampling 쓰면 안되나?
     '''
-    def downscale2d():
-        pass
-
+    def __init__(self, factor=2, gain=1) -> None:
+        super(DownScale2d, self).__init__()
+        self.factor = factor
+        self.gain = gain
+        if self.factor == 2:
+            kernel = [np.sqrt(self.gain) / self.factor] * self.factor
+            self.blur_layer = BlurLayer(kernel=kernel, normalize=False, stride=self.factor)
+        else:
+            self.blur_layer = None
+    def forward(self, x):
+        # downscale by using blur_layer
+        if self.blur_layer is not None:
+            return self.blur_layer(x)
+        
+        out = x * self.gain
+        if self.factor == 1:
+            return out
+        return F.avg_pool2d(x, self.factor)
 
 class EqualizedLinear(nn.Module):
     '''
