@@ -65,6 +65,9 @@ class EqualizedLinear(nn.Module):
         out = F.linear(x, self.weight * self.w_mul, bias)
         return out
 
+class EqualizedConv2d(nn.Module):
+    def __init__(self) -> None :
+        pass
 class NoiseLayer(nn.module):
     '''
     '''
