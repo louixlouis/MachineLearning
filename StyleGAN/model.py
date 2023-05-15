@@ -1,5 +1,9 @@
+import numpy as np
+
 import torch
 import torch.nn as nn
+
+from customLayers import PixelWiseNorm, EqualizedLinear
 
 class FullyConnectedLayer(nn.Module):
     '''
@@ -32,7 +36,17 @@ class MappingLayer(nn.Module):
     '''
     Mapping Layer.
     '''
-    def __init__(self, latent_z_dim, latent_w_dim, latent_w_broadcast, num_layers, lr_multiplier, activation, normalize_z, w_scale) -> None:
+    def __init__(
+            self, 
+            latent_z_dim, 
+            latent_w_dim, 
+            latent_w_broadcast, 
+            num_layers=8, 
+            lr_multiplier=0.01, 
+            activation='lrelu', 
+            normalize_z=True, 
+            w_scale=True
+            ) -> None:
         '''
         Parameters :
         latent_z_dim       : dimension of latent vector z.
@@ -51,16 +65,34 @@ class MappingLayer(nn.Module):
         self.num_layers = num_layers
          
         # Activation functions.
-        
+        if activation == 'lrelu':
+            activation_layer = nn.LeakyReLU(0.2)
+        else:
+            activation_layer = nn.ReLU()
+
         # Mapping layers.
         layers = []
         if normalize_z:
-            layers.append(PixelNormLayer())
-        layers.append(FullyConnectedLayer(self.latent_z_dim, self.latent_w_dim, activation=activation)
-        layers.append(activation)
+            layers.append(PixelWiseNorm())
+        layers.append(
+            EqualizedLinear(
+                in_channels=self.latent_z_dim, 
+                out_channels=self.latent_w_dim, 
+                gain=np.sqrt(2), 
+                w_scale=w_scale, 
+                lr_multiplier=lr_multiplier))
+        layers.append(activation_layer)
+
         for num in range(1, self.num_layers):
-            layers.append(FullyConnectedLayer(self.latent_w_dim, out_channels, activation=activation))
-            layers.append(activation)
+            layers.append(
+                EqualizedLinear(
+                    in_channels=self.latent_w_dim,
+                    out_channels=self.latent_w_dim,
+                    gain=np.sqrt(2),
+                    w_scale=w_scale,
+                    lr_multiplier=lr_multiplier
+                ))
+            layers.append(activation_layer)
         self.model = nn.Sequential(*layers)
                       
     def forward(self, x):

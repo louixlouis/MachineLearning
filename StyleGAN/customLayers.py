@@ -121,6 +121,7 @@ class EqualizedLinear(nn.Module):
 class EqualizedConv2d(nn.Module):
     def __init__(self) -> None :
         pass
+    
 class NoiseLayer(nn.module):
     '''
     '''
