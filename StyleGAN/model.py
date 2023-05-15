@@ -3,35 +3,28 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from customLayers import PixelWiseNorm, EqualizedLinear
+from customLayers import PixelWiseNorm, EqualizedLinear, EqualizedConv2d
 
-class FullyConnectedLayer(nn.Module):
+class InputBlock(nn.Module):
     '''
-    Customized Fully connected layer
+    The first block (4x4 pixels) doesn't hava an input.
+    The result of it is just replaced by a trained constant.
     '''
-    def __init__(self, in_feature, out_feature, activation) -> None:
-        super(FullyConnectedLayer, self).__init__()
-        self.weight = nn.Parameter(torch.randn([out_feature, in_feature]))
-        self.bias = True,
-        self.activation = activation
+    def __init__(
+            self,
+            in_channels,
+            latent_w_dim,
+            gain,
+            ) -> None:
+        super(InputBlock, self).__init__()
 
-    def forward(self, x):
-        weight = self.weight.to(x.dtype)
+        self.in_channels = in_channels
+        self.constant = nn.Parameter(torch.ones(1, self.in_channels, 4, 4))
+        self.bias = nn.Parameter(torch.ones(in_channels))
 
-        out = x.matmul(weight.t())
-        return out
-
-class ConvolutionalLayer(nn.Module):
-    '''
-    Cutomized Convolutional Layer
-    '''
-    def __init__(self, in_channels, out_channels, kernel_size, bias, activation) -> None:
-        super(ConvolutionalLayer, self).__init__()
-        self.activation = activation
-    
-    def forward(self, x):
-        return x
-    
+        self.epi_1 = None
+        self.conv2d = EqualizedConv2d()
+        self.epi_2 = None
 class MappingLayer(nn.Module):
     '''
     Mapping Layer.
@@ -43,7 +36,7 @@ class MappingLayer(nn.Module):
             latent_w_broadcast, 
             num_layers=8, 
             lr_multiplier=0.01, 
-            activation='lrelu', 
+            use_relu='lrelu', 
             normalize_z=True, 
             w_scale=True
             ) -> None:
@@ -54,7 +47,7 @@ class MappingLayer(nn.Module):
         latent_w_broadcast : broadcast latent vector w as [minibatch, latent_w_broadcast] or [minibatch, latent_w_broadcast, latent_w_dim]
         num_layers         : number of mapping layers.
         lr_multiplier      : learning rate multiplier.
-        activation         : activation functions, 'relu' or 'lrelu'
+        use_relu           : activation functions, 'relu' or 'lrelu'
         normalize_z        : normalize letent vector z before feeding to layers.
         w_scale            : enable equalized learning rate
         '''
@@ -65,10 +58,10 @@ class MappingLayer(nn.Module):
         self.num_layers = num_layers
          
         # Activation functions.
-        if activation == 'lrelu':
-            activation_layer = nn.LeakyReLU(0.2)
-        else:
+        if use_relu:
             activation_layer = nn.ReLU()
+        else:
+            activation_layer = nn.LeakyReLU(0.2)
 
         # Mapping layers.
         layers = []
@@ -96,14 +89,51 @@ class MappingLayer(nn.Module):
         self.model = nn.Sequential(*layers)
                       
     def forward(self, x):
-        out = self.model(x)
+        w = self.model(x)
         if self.latent_w_broadcast is not None:
-            out = out.unsqueeze(1).expand(-1, self.latent_w_broadcast, -1)
-        return x
+            w = w.unsqueeze(1).expand(-1, self.latent_w_broadcast, -1)
+        return w
 
 class SynthesizeLayer(nn.Module):
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(
+            self,
+            latent_w_dim=512,
+            num_channels=3,
+            resolution=1024,
+            use_styles=True,
+            use_relu=False,
+            structure='linear'
+            ) -> None:
+        '''
+        resolution : Output resolution
+        use_styles : Enable style inputs
+        use_relu : True -> relu, False -> leaky relu
+        structure : 'fixed' -> no progressive, 'linear' -> human readable?
+        '''
+        super(SynthesizeLayer, self).__init__()
+        self.structure = structure
+        
+        log2_resolution = int(np.lgo2(resolution))
+        assert resolution == 2**log2_resolution and resolution >= 4
+        self.depth = log2_resolution - 1
+
+        # What different between self.depth and self.num_layers?
+        self.num_layers = log2_resolution*2 - 2
+        self.num_styles = self.num_layers if use_styles else 1
+
+        gain = np.sqrt(2)
+        if use_relu:
+            activation_layer = nn.ReLU()
+        else:
+            activation_layer = nn.LeakyReLU(0.2)
+        
+        # Early layer
+        self.input_block = InputBlock()
+
+        # to_RGB layers for various outputs.
+
+    def forward(self, x):
+        return x
 
 class Generator(nn.Module):
     def __init__(self):

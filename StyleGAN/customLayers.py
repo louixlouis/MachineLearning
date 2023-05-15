@@ -119,8 +119,54 @@ class EqualizedLinear(nn.Module):
         return out
 
 class EqualizedConv2d(nn.Module):
-    def __init__(self) -> None :
-        pass
+    def __init__(
+            self,
+            in_channels,
+            out_channels,
+            kernel_size,
+            stride=1,
+            bias=True,
+            gain=2**0.5,
+            w_scale=False,
+            lr_multiplier=1,
+            intermediate=None,
+            upscale=False,
+            downscale=False
+            ) -> None :
+        super(EqualizedConv2d, self).__init__()
+        if upscale:
+            self.upscale = UpScale2d()
+        else:
+            self.upscale = None
+        if downscale:
+            self.downscale = DownScale2d()
+        else:
+            self.downscale = None
+        
+        # He initialization
+        He_std = gain * (in_channels * kernel_size**2)**(-0.5)
+        self.kernel_size = kernel_size
+
+        if w_scale:
+            init_std = 1.0 / lr_multiplier
+            self.w_mul = He_std * lr_multiplier
+        else:
+            init_std = He_std / lr_multiplier
+            self.w_mul = lr_multiplier
+        # check this dimension
+        self.weight = nn.Parameter(torch.randn(out_channels, in_channels, kernel_size, kernel_size) * init_std)
+
+        if bias:
+            self.bias = nn.Parameter(torch.randn(torch.zeros(out_channels)))
+            self.bias_multiplier = lr_multiplier
+        else:
+            self.bias = None
+        
+        self.intermediate = intermediate
+
+    def forward(self, x):
+
+        return x
     
 class NoiseLayer(nn.module):
     '''
