@@ -5,12 +5,22 @@ import torch.nn as nn
 # Positional encoding
 ############
 class PositionEncoder():
-    def __init__(self, **kwargs):
-        self.kwargs = kwargs
+    def __init__(self, in_dim, max_freq, num_freqs, log_sampling):
+        self.in_dim = in_dim
+        self.max_freq = max_freq
+        self.num_freqs = num_freqs
+        self.log_sampling = log_sampling # Need ?
         
     def encoder(self):
-        pass
-        
+        gamma_function = []
+        freq_list = torch.linspace(2.**0, 2.**self.max_freq, steps=self.num_freqs)
+        for freq in freq_list:
+            for function in [torch.sin, torch.cos]:
+                gamma_function.append(lambda x, function=function, freq=freq : function(freq*x))
+        self.gamma_function = gamma_function
+
+    
+
     
 class NeRF(nn.Module):
     def __init__(self, in_channels, out_channels, in_views, depth, width, skips, use_viewdirs):

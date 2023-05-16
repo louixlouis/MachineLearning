@@ -165,7 +165,10 @@ class EqualizedConv2d(nn.Module):
         self.intermediate = intermediate
 
     def forward(self, x):
-
+        bias = self.bias
+        if bias is not None:
+            bias = bias * self.bias_multiplier
+        
         return x
     
 class NoiseLayer(nn.module):
