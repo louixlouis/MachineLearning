@@ -25,9 +25,6 @@ class PositionEncoder():
     def encoding(self, x):
         return torch.cat([function(x) for function in self.gamma_function], -1)
 
-def get_encoder():
-    pass
-
 ############
 # NeRF model
 ############
@@ -57,10 +54,11 @@ class NeRF(nn.Module):
         self.position_layers = nn.ModuleList(position_layers)
         
         # Linear layers for view.
-        self.view_layers = nn.ModuleList([nn.Linear(in_views + feature_dim, feature_dim//2)])
+        # self.view_layers = nn.ModuleList([nn.Linear(in_views + feature_dim, feature_dim//2)])
+        self.view_layer = nn.Linear(in_views + feature_dim, feature_dim//2)
         if use_viewdirs:
             self.feature_linear = nn.Linear(feature_dim, feature_dim)
-            self.alpha_linear = nn.Linear(feature_dim, 1)
+            self.sigma_linear = nn.Linear(feature_dim, 1)
             self.rgb_linear = nn.Linear(feature_dim//2, 3)
         else:
             self.output_linear = nn.Linear(feature_dim, self.out_channels)
@@ -72,15 +70,36 @@ class NeRF(nn.Module):
         dim = dimension along which to split the tensor.
         '''
         in_positions, in_views = torch.split(x, [self.in_channels, self.in_views], dim=-1)
-        
+        out = in_positions
         for i, layer in enumerate(self.position_layers):
-            h = layer(in_positions)
-            h = F.relu(h)
+            out = layer(out)
+            out = F.relu(out)
             if i in self.skips:
-                h = torch.cat([in_positions, h], -1)
+                # 논문 설명이랑 다르지 않나..?
+                out = torch.cat([in_positions, out], -1)
         
         if self.use_viewdirs:
-            pass
+            # sigma is the volume density.
+            # 1 dim
+            sigma = self.sigma_linear(out)
+
+            # Camera ray's viewing direction concatenated with feature vector.
+            feature = self.feature_linear(out)
+            out = torch.cat([feature, in_views], -1)
             
-        return h
+            out = self.view_layer(out)
+            out = F.relu(out)
+
+            # c is RGB vector
+            # 3 dim
+            c = self.rgb_linear(out)
+            
+            # 4 dim
+            output = torch.cat([c, sigma], -1)
+        else:
+            output = self.output_linear(out)
+        return output
+
+    def load_weights_from_keras(self, weights):
+        assert self.use_viewdirs, "Not implemented if use_view_dirs = False"
     
