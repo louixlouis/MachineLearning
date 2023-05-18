@@ -1,13 +1,23 @@
 import torch
 
-# torch.sum(input, dim, keepdim)
+'''
+intrinsic - 내제가치
+extrinsic - 외적
+'''
+
+'''
+torch.sum(input, dim, keepdim)
+'''
 x = torch.randn(2, 3, 4, 5)
 print(x)
 print(torch.sum(x, -1, keepdim=True))
 print(torch.cumsum(torch.sum(x, -1, keepdim=True), -1))
 
-# contiguous
-# tensor의 shape변화에 따른 저장된 메모리 순서 조정
+'''
+contiguous
+tensor의 shape변화에 따른 저장된 메모리 순서 조정
+'''
+
 '''
 Related methods
 narrow(), view(), expand(), transpose(), ...
