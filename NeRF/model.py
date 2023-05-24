@@ -4,6 +4,29 @@ import torch.nn.functional as F
 
 import numpy as np
 
+############
+# Positional encoding
+############
+class PositionEncoder():
+    def __init__(self, L:int, in_dim=3):
+        self.max_freq = L - 1
+        self.num_freqs = L
+        self.in_dim = in_dim
+        self.out_dim = in_dim
+        self.encoder()
+
+    def encoder(self):
+        gamma_function = []
+        freq_list = torch.linspace(0., self.max_freq, steps=self.num_freqs)
+        for freq in freq_list:
+            for function in [torch.sin, torch.cos]:
+                gamma_function.append(lambda x, function=function, freq=freq : function(freq*x))
+                out_dim += self.in_dim
+        self.gamma_function = gamma_function
+
+    def encoding(self, x):
+        return torch.cat([function(x) for function in self.gamma_function], -1)
+    
 class NeRFModule(nn.Module):
     def __init__(self, in_pos_dim:int, in_view_dim:int, depth:int, w_dim:int, skips=[4]) -> None:
         super(NeRFModule, self).__init__()
@@ -49,8 +72,8 @@ class NeRF(nn.Module):
         gt_camera_param :  
         '''
         super(NeRF, self).__init__()
-        self.model_coarse = None
-        self.model_fine = None
+        self.model_coarse = NeRFModule()
+        self.model_fine = NeRFModule()
     
     def initialize_weights(self, m):
         if isinstance(m, nn.Linear):
