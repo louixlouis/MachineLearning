@@ -1,24 +1,29 @@
+import os
+
 import numpy as np
 
-from model import *
+import torch
 
-if __name__=='__main__':
-    # Load dataset.
 
-    # What is K?
-    K = None
-    hwf = None
-    height, width, focal = hwf
-    height, width = int(height), int(width)
+def main():
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    print(f'Device : {device}')
+    torch.manual_seed(777)
+    if device == 'cuda':
+        torch.cuda.manual_seed_all(777)
 
-    if K is None:
-        K = np.array([
-            [focal, 0, 0.5*width],
-            [0, focal, 0.5*height],
-            [0, 0, 1]
-        ])
+    # Hyper parameters.
+    learning_rate = 0.0002
+    epochs = 20
+    batch_size = 64
 
-    # Create directories.
+    checkpoints_path = './checkpoints'
+    os.makedirs(checkpoints_path, exist_ok=True)
 
-    # Create model.
+    # Data load.
+
+    # Define model.
     model = None
+
+if __name__ == '__main__':
+    main()
