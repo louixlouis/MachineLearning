@@ -25,23 +25,23 @@ class PositionEncoder():
         return torch.cat([function(x) for function in self.gamma_function], -1), self.out_dim
 
 class NeRFModule(nn.Module):
-    def __init__(self, in_pos_dim:int, in_view_dim:int, depth:int, w_dim:int, skips=[4]) -> None:
+    def __init__(self, in_channel:int, in_channel_d:int, depth:int, w_dim:int, skips=[4]) -> None:
         super(NeRFModule, self).__init__()
-        self.in_pos_dim = in_pos_dim
-        self.in_view_dim = in_view_dim
+        self.in_channel = in_channel
+        self.in_channel_d = in_channel_d
         self.depth = depth
         self.w_dim = w_dim
         self.skips = skips
 
         # Define layers.
-        self.position_layers = nn.ModuleList([nn.Linear(in_pos_dim, w_dim)] + [nn.Linear(w_dim, w_dim) if i not in self.skips else nn.Linear(w_dim + in_pos_dim, w_dim) for i in range(self.depth - 1)])
-        self.view_dir_layers = nn.Linear(in_pos_dim + w_dim, w_dim//2)
+        self.position_layers = nn.ModuleList([nn.Linear(in_channel, w_dim)] + [nn.Linear(w_dim, w_dim) if i not in self.skips else nn.Linear(w_dim + in_channel, w_dim) for i in range(self.depth - 1)])
+        self.view_dir_layers = nn.Linear(in_channel + w_dim, w_dim//2)
         self.feature_layers = nn.Linear(w_dim, w_dim)
         self.density_layers = nn.Linear(w_dim, 1)
         self.color_layers = nn.Linear(w_dim//2, 3)
     
     def forward(self, x):
-        in_position, in_direction = torch.split(x, [self.in_pos_dim, self.in_view_dim], dim=-1)
+        in_position, in_direction = torch.split(x, [self.in_channel, self.in_channel_d], dim=-1)
         out = in_position
         for i, layer in enumerate(self.position_layers):
             out = self.position_layers[i](out)
