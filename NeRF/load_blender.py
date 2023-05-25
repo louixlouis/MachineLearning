@@ -2,6 +2,8 @@ import os
 import json
 import imageio
 
+import numpy as np
+
 def load_blender(root:str, bg_white:bool=True, downsample:int=0, test_skip:int=8):
     splits = ['train', 'val', 'test']
     metas = {}
@@ -20,6 +22,7 @@ def load_blender(root:str, bg_white:bool=True, downsample:int=0, test_skip:int=8
         meta = metas[s]
         images = []
         poses = []
+        # What is test_skip?
         if s == 'train' or test_skip == 0:
             skip = 1
         else:
@@ -27,4 +30,29 @@ def load_blender(root:str, bg_white:bool=True, downsample:int=0, test_skip:int=8
         
         for frame in meta['frame'][::skip]:
             file_name = os.path.join(root, frame['file_path'] + '.png')
-            images.append()
+            # images = [image1, image2, image3, ...]
+            images.append(imageio.imread(file_name))
+            poses.append(np.array(file_name['transform_matrix']))
+            
+        # Normalization
+        images = (np.array(images) / 255.).astype(np.float32)
+        poses = np.array(poses).astype(np.float32)
+        
+        # counts = [0, 1, 3, 6, ...] ?
+        counts.append(counts[-1] + images.shape[0])
+        all_images.append(images)
+        all_poses.append(poses)
+    
+    # what is i_split?
+    i_split = [np.arange(counts[i], counts[i+1]) for i in range(len(counts)-1)]
+    images = np.concatenate(all_images, 0)
+    gt_extrinsic = np.concatenate(all_poses, 0)
+    
+    heigth, width = images[0].shape[:2]
+    camera_angle_x = float(metas['train']['camera_angle_x'])
+    focal = .5 * width / np.tan(.5 * camera_angle_x)
+    
+    if downsample:
+        height, width = int(height//downsample), int(width//downsample)
+        focal = focal/downsample
+    
