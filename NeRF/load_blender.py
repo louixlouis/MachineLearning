@@ -55,4 +55,21 @@ def load_blender(root:str, bg_white:bool=True, downsample:int=0, test_skip:int=8
     if downsample:
         height, width = int(height//downsample), int(width//downsample)
         focal = focal/downsample
+        
+        images_reduced = np.zeros((images.shape[0], height, width, images.shape[3]))
+        for i, image in enumerate(images):
+            images_reduced[i] = cv2.resize(image, (width, height), interpolation=cv2.INTER_AREA)
+        images = images_reduced
     
+    # Need?
+    height, width = int(height), int(width)
+    gt_intrinsic = np.array([
+        [focal, 0, 0.5*width],
+        [0, focal, 0.5*height],
+        [0, 0, 1]])
+    
+    if bg_white:
+        images = images[..., :3] * images[..., -1:] + (1.0-images[..., -1:])
+    else:
+        images = images[..., :3] * images[..., -1:]
+    return images, [gt_intrinsic, gt_extrinsic], [height, width], i_split
