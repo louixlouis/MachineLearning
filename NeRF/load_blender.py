@@ -61,7 +61,7 @@ def load_blender(root:str, bg_white:bool=True, downsample:int=0, test_skip:int=8
             images_reduced[i] = cv2.resize(image, (width, height), interpolation=cv2.INTER_AREA)
         images = images_reduced
     
-    # Need?
+    # It needs when downsample is false.
     height, width = int(height), int(width)
     gt_intrinsic = np.array([
         [focal, 0, 0.5*width],
