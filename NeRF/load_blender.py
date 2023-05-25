@@ -1,5 +1,6 @@
 import os
 import json
+import imageio
 
 def load_blender(root:str, bg_white:bool=True, downsample:int=0, test_skip:int=8):
     splits = ['train', 'val', 'test']
