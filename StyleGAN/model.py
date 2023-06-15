@@ -111,4 +111,13 @@ class Generator(nn.Module):
         # Why ones?
         self.constant = nn.Parameter(torch.ones(1, in_channels, 4, 4))
         self.mapping = MappingNetwork(z_dim, w_dim)
-        
+
+        # Initial block.
+        self.init_conv = nn.Conv2d(in_channels=in_channels, out_channels=in_channels, kernel_size=3, stride=1, padding=1)
+        self.init_l_relu = nn.LeakyReLU(0.2, inplace=True)
+        self.init_noise_1 = AddNoise(in_channels)
+        self.init_adaIN_1 = AdaIN(in_channels, w_dim)
+
+        self.init_noise_2 = AddNoise(in_channels)
+        self.init_adaIN_2 = AdaIN(in_channels, w_dim)
+
