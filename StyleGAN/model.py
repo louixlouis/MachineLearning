@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 # AffineTransform X, 이름변경 필요.
 class WSLinear(nn.Module):
@@ -106,11 +107,17 @@ class GenBlock(nn.Module):
         return out
     
 class Generator(nn.Module):
-    def __init__(self, z_dim, w_dim, in_channels, img_channels=3) -> None:
+    def __init__(self, z_dim, w_dim, in_channels, factors, img_channels=3) -> None:
+        '''
+        z_dim
+        w_dim
+        in_channels
+        factors = [1, 1, 1, 1/2, 1/4, 1/8, 1/16, 1/32]
+        '''
         super(Generator, self).__init__()
+        self.mapping = MappingNetwork(z_dim, w_dim)
         # Why ones?
         self.constant = nn.Parameter(torch.ones(1, in_channels, 4, 4))
-        self.mapping = MappingNetwork(z_dim, w_dim)
 
         # Initial block.
         self.init_conv = nn.Conv2d(in_channels=in_channels, out_channels=in_channels, kernel_size=3, stride=1, padding=1)
@@ -121,3 +128,37 @@ class Generator(nn.Module):
         self.init_noise_2 = AddNoise(in_channels)
         self.init_adaIN_2 = AdaIN(in_channels, w_dim)
 
+        self.to_rgb = WSConv2d(in_channels=in_channels, out_channels=img_channels, kernel_size=1, stride=1, padding=0)
+        
+        self.gen_block_list = nn.ModuleList([])
+        self.to_rgb_list = nn.ModuleList([self.to_rgb])
+
+        for i in range(len(factors)-1):
+            in_c = int(in_channels * factors[i])
+            out_c = int(in_channels * factors[i+1])
+            self.gen_block_list.append(GenBlock(in_channels=in_c, out_channels=out_c, w_dim=w_dim))
+            self.to_rgb_list.append(WSConv2d(in_channels=in_c, out_channels=img_channels, kernel_size=1, stride=1, padding=0))
+
+    def fade_in(self, alpha, up_sampled, generated):
+        return torch.tanh(alpha*generated + (1-alpha)*up_sampled)
+
+    def forward(self, x, alpha, steps):
+        w = self.mapping(x)
+
+        # Initial block
+        out = self.init_adaIN_1(self.init_noise_1(self.constant), w)
+        out = self.init_adaIN_2(self.init_l_relu(self.init_noise_2(self.init_conv(out))), w)
+
+        if steps == 0:
+            # x (output of init_adaIN_1) ? 
+            # out (output of init_adaIN_2) ?
+            return self.to_rgb_list[steps](x)
+
+        for step in range(steps):
+            up_sampled = F.interpolate(out, scale_factor=2, mode='bilinear')
+            out = self.gen_block_list[step](up_sampled, w)
+        
+        final_up_sampled = self.to_rgb_list[steps-1](up_sampled)
+        final_out = self.to_rgb_list[steps](out)
+
+        return self.fade_in(alpha=alpha, up_sampled=up_sampled, generated=final_out)
