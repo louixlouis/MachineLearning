@@ -103,6 +103,18 @@ class Generator(nn.Module):
 
         return self.fade_in(alpha=alpha, up_sampled=up_sampled, generated=final_out)
 
+class DisBlock(nn.Module):
+    def __init__(self, in_channels, out_channels) -> None:
+        super(DisBlock, self).__init__()
+        self.conv_1 = WSConv2d(in_channels=in_channels, out_channels=out_channels)
+        self.conv_2 = WSConv2d(in_channels=out_channels, out_channels=out_channels)
+        self.l_relu = nn.LeakyReLU(0.2)
+    
+    def forward(self, x):
+        out = self.l_relu(self.conv_1(x))
+        out = self.l_relu(self.conv_2(out))
+        return out
+
 class Discriminator(nn.Module):
     def __init__(self, in_channels, factors, img_channels=3) -> None:
         '''
@@ -116,4 +128,42 @@ class Discriminator(nn.Module):
         for i in range(len(factors)-1, 0, -1):
             in_c = int(in_channels * factors[i])
             out_c = int(in_channels * factors[i-1])
-            
+            self.dis_block_list.append(DisBlock(in_channels=in_c, out_channels=out_c))
+            self.from_rgb_list.append(WSConv2d(in_channels=img_channels, out_channels=in_c, kernel_size=1, stride=1, padding=0))
+
+        self.from_rgb = WSConv2d(in_channels=img_channels, out_channels=in_channels, kernel_size=1, stride=1, padding=0)
+        self.from_rgb_list.append(self.from_rgb)
+        self.avg_pool = nn.AvgPool2d(kernel_size=2, stride=2)
+
+        # the block for 4x4 input.
+        self.final_block = nn.Sequential(
+            WSConv2d(in_channels=in_channels+1, out_channels=in_channels, kernel_size=3, padding=1),
+            nn.LeakyReLU(0.2),
+            WSConv2d(in_channels=in_channels, out_channels=in_channels, kernel_size=4, padding=0, stride=1),
+            nn.LeakyReLU(0.2),
+            WSConv2d(in_channels=in_channels, out_channels=1, kernel_size=1, padding=0, stride=1)
+        )
+
+    def fade_in(self, alpha, down_sampled, out):
+        return alpha*out + (1-alpha)*down_sampled
+    
+    def minibatch_std(self, x):
+        batch_stats = (torch.std(x, dim=0).mean().repeat(x.shape[0], 1, x.shape[2], x.shape[3]))
+        return torch.cat([x, batch_stats], dim=1)
+    
+    def forward(self, x ,alpha, steps):
+        cur_step = len(self.dis_block_list) - steps
+        out = self.l_relu(self.from_rgb_list[cur_step](x))
+
+        if steps == 0:
+            out = self.minibatch_std(out)
+            return self.final_block(out).view(out.shape[0], -1)
+        
+        down_sampled = self.l_relu(self.from_rgb_list[cur_step+1](self.avg_pool(x)))
+        out = self.avg_pool(self.dis_block_list[cur_step](out))
+        out = self.fade_in(alpha=alpha, down_sampled=down_sampled, out=out)
+        for step in range(cur_step+1, len(self.dis_block_list)):
+            out = self.dis_block_list[step](out)
+            out = self.avg_pool(out)
+        out = self.minibatch_std(out)
+        return self.final_block(out).view(out.shape[0], -1)

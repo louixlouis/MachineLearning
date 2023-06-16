@@ -64,15 +64,5 @@ class WSConv2d(nn.Module):
     def forward(self, x):
         return self.conv(self.scale * x) + self.bias.view(1, self.bias.shape[0], 1, 1)
 
-class ConvBlock(nn.Module):
-    def __init__(self, in_channels, out_channels) -> None:
-        super(ConvBlock, self).__init__()
-        self.conv_1 = WSConv2d(in_channels=in_channels, out_channels=out_channels)
-        self.conv_2 = WSConv2d(in_channels=out_channels, out_channels=out_channels)
-        self.l_relu = nn.LeakyReLU(0.2)
-    
-    def forward(self, x):
-        out = self.l_relu(self.conv_1(x))
-        out = self.l_relu(self.conv_2(out))
-        return out
-        
+
+
