@@ -102,3 +102,18 @@ class Generator(nn.Module):
         final_out = self.to_rgb_list[steps](out)
 
         return self.fade_in(alpha=alpha, up_sampled=up_sampled, generated=final_out)
+
+class Discriminator(nn.Module):
+    def __init__(self, in_channels, factors, img_channels=3) -> None:
+        '''
+        factors = [1, 1, 1, 1/2, 1/4, 1/8, 1/16, 1/32]
+        '''
+        super(Discriminator, self).__init__()
+        self.dis_block_list = nn.ModuleList([])
+        self.from_rgb_list = nn.ModuleList([])
+        self.l_relu = nn.LeakyReLU(0.2)
+
+        for i in range(len(factors)-1, 0, -1):
+            in_c = int(in_channels * factors[i])
+            out_c = int(in_channels * factors[i-1])
+            
