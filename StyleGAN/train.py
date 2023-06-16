@@ -28,6 +28,19 @@ def get_loader(image_size, batch_size_list, data_root):
 def check_loader():
     pass
 
+def gradient_penalty(discriminator, real, fake, alpha, step, device='cpu'):
+    batch_size, channel, height, width = real.shape
+    beta = torch.rand((batch_size, 1, 1, 1)).repeat(1, channel, height, width).to(device)
+    image_hat = beta*real + (1-beta)*fake.detach()
+    image_hat.requires_grad_(True)
+
+    loss = discriminator(image_hat, alpha, step)
+    gradient = torch.autograd.grad(outputs=loss, inputs=image_hat, grad_outputs=torch.ones_like(loss), create_graph=True, retain_graph=True)[0]
+    gradient = gradient.view(gradient.shape[0], -1)
+    gradient_norm = gradient.norm(2, dim=1)
+    gradient_penalty = torch.mean((gradient_norm - 1)**2)
+    return gradient_penalty
+    
 def main():
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f'Device: {device}')
@@ -44,6 +57,8 @@ def main():
     lambda_gp = 10
     epoch_list = [30] * len(batch_size_list)
     factors = [1, 1, 1, 1/2, 1/4, 1/8, 1/16, 1/32]
+    start_image_size = 4
+    data_root = ''
 
     # Define models.
     generator = Generator(z_dim=z_dim, w_dim=w_dim, in_channels=in_channels, factors=factors, img_channels=img_channels).to(device)
@@ -58,6 +73,22 @@ def main():
 
     generator.train()
     discriminator.train()
+    step = int(log2(start_image_size / 4))
+    for epochs in epoch_list[step:]:
+        alpha = 1e-7
+        dataset, loader = get_loader(image_size=4*2**step, batch_size_list=batch_size_list, data_root=data_root)
+        print(f'Current image size : {4*2**step} X {4*2**step}')
 
+        for epoch in range(epochs):
+            print(f'Epoch [{epoch+1}]/[{epochs}]')
+            for i, (real, _) in enumerate(tqdm(loader, leave=True)):
+                real = real.to(device)
+                cur_batch_size = real.shape[0]
+                noise = torch.randn(cur_batch_size, z_dim).to(device)
+                fake = generator(noise, alpha, step)
+                loss_real = discriminator(real, alpha, step)
+                loss_fake = discriminator(fake.detach(), alpha, step)
+                gp = gradient_penalty()
+        step += 1
 if __name__ == '__main__':
     main()
