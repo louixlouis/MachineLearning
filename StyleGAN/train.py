@@ -125,7 +125,7 @@ def main():
                 alpha += cur_batch_size / (epoch_list[step] * 0.5 * len(dataset))
                 alpha = min(alpha, 1)
 
-                loop.set_postfix(gp=gp.item, loss_D=loss_D.item())
+                loop.set_postfix(gp=gp.item(), loss_D=loss_D.item())
         generate_samples(generator, step, z_dim, device)
         step += 1
         
