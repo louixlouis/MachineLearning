@@ -70,7 +70,7 @@ def main():
     epoch_list = [30] * len(batch_size_list)
     factors = [1, 1, 1, 1/2, 1/4, 1/8, 1/16, 1/32]
     start_image_size = 4
-    data_root = ''
+    data_root = '../datasets/woman'
 
     # Define models.
     generator = Generator(z_dim=z_dim, w_dim=w_dim, in_channels=in_channels, factors=factors, img_channels=img_channels).to(device)
