@@ -84,7 +84,7 @@ class Generator(nn.Module):
 
     def forward(self, x, alpha, steps):
         w = self.mapping(x)
-
+        
         # Initial block
         out = self.init_adaIN_1(self.init_noise_1(self.constant), w)
         out = self.init_adaIN_2(self.init_l_relu(self.init_noise_2(self.init_conv(out))), w)

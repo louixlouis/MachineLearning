@@ -45,7 +45,7 @@ class AddNoise(nn.Module):
         self.weight = nn.Parameter(torch.zeros(1, channels, 1, 1))
     
     def forward(self, x):
-        noise = torch.randn((x.shape[0], x.shape[1], x.shape[2]), device=x.device)
+        noise = torch.randn((x.shape[0], 1, x.shape[2], x.shape[3]), device=x.device)
         # 계산식 맞음?
         return x + self.weight + noise
     
