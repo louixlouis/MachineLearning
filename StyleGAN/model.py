@@ -84,15 +84,13 @@ class Generator(nn.Module):
 
     def forward(self, x, alpha, steps):
         w = self.mapping(x)
-        
+
         # Initial block
         out = self.init_adaIN_1(self.init_noise_1(self.constant), w)
-        out = self.init_adaIN_2(self.init_l_relu(self.init_noise_2(self.init_conv(out))), w)
-
+        out = self.init_conv(out)
         if steps == 0:
-            # x (output of init_adaIN_1) ? 
-            # out (output of init_adaIN_2) ?
-            return self.to_rgb_list[steps](x)
+            return self.to_rgb_list[steps](out)
+        out = self.init_adaIN_2(self.init_l_relu(self.init_noise_2(out)), w)
 
         for step in range(steps):
             up_sampled = F.interpolate(out, scale_factor=2, mode='bilinear')
@@ -101,7 +99,7 @@ class Generator(nn.Module):
         final_up_sampled = self.to_rgb_list[steps-1](up_sampled)
         final_out = self.to_rgb_list[steps](out)
 
-        return self.fade_in(alpha=alpha, up_sampled=up_sampled, generated=final_out)
+        return self.fade_in(alpha=alpha, up_sampled=final_up_sampled, generated=final_out)
 
 class DisBlock(nn.Module):
     def __init__(self, in_channels, out_channels) -> None:
