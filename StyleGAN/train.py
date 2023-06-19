@@ -10,6 +10,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
+from torchvision.utils import save_image
 
 from model import Generator, Discriminator
 
@@ -40,7 +41,18 @@ def gradient_penalty(discriminator, real, fake, alpha, step, device='cpu'):
     gradient_norm = gradient.norm(2, dim=1)
     gradient_penalty = torch.mean((gradient_norm - 1)**2)
     return gradient_penalty
-    
+
+def generate_samples(generator, step, z_dim, device, num=100):
+    generator.eval()
+    alpha = 1.0
+    for i in range(num):
+        with torch.no_grad():
+            latent_z = torch.randn(1, z_dim).to(device)
+            image = generator(latent_z, alpha, step)
+            os.makedirs(f'./samples/step_{step}', exist_ok=True)
+            save_image(image*0.5 + 0.5, f'./samples/step_{step}/image_{i}.png')
+    generator.train()
+
 def main():
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f'Device: {device}')
@@ -71,6 +83,7 @@ def main():
         betas=(0.0, 0.99))
     optimizer_d = torch.optim.Adam(discriminator.parameters(), lr=learning_rate, betas=(0.0, 0.99))
 
+    # Set train mode.
     generator.train()
     discriminator.train()
     step = int(log2(start_image_size / 4))
@@ -79,16 +92,42 @@ def main():
         dataset, loader = get_loader(image_size=4*2**step, batch_size_list=batch_size_list, data_root=data_root)
         print(f'Current image size : {4*2**step} X {4*2**step}')
 
+        # Train parts.
         for epoch in range(epochs):
             print(f'Epoch [{epoch+1}]/[{epochs}]')
-            for i, (real, _) in enumerate(tqdm(loader, leave=True)):
+            loop = tqdm(loader, leave=True)
+            for i, (real, _) in enumerate(loop):
                 real = real.to(device)
                 cur_batch_size = real.shape[0]
                 noise = torch.randn(cur_batch_size, z_dim).to(device)
                 fake = generator(noise, alpha, step)
                 loss_real = discriminator(real, alpha, step)
                 loss_fake = discriminator(fake.detach(), alpha, step)
-                gp = gradient_penalty()
+                gp = gradient_penalty(discriminator=discriminator, real=real, fake=fake, alpha=alpha, step=step, device=device)
+                
+                # Discriminator's loss.
+                loss_D = -torch.mean(loss_real) - torch.mean(loss_fake) + lambda_gp*gp + 0.001*torch.mean(loss_real**2)
+
+                # Update discriminator.
+                discriminator.zero_grad()
+                loss_D.backward()
+                optimizer_d.step()
+
+                loss_fake = discriminator(fake, alpha, step)
+                # Generator's loss.
+                loss_G = -torch.mean(loss_fake)
+
+                # Update generator.
+                generator.zero_grad()
+                loss_G.backward()
+                optimizer_g.step()
+
+                alpha += cur_batch_size / (epoch_list[step] * 0.5 * len(dataset))
+                alpha = min(alpha, 1)
+
+                loop.set_postfix(gp=gp.item, loss_D=loss_D.item())
+        generate_samples(generator, step, z_dim, device)
         step += 1
+        
 if __name__ == '__main__':
     main()
