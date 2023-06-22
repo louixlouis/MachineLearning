@@ -77,7 +77,7 @@ class Generator(nn.Module):
             in_c = int(in_channels * factors[i])
             out_c = int(in_channels * factors[i+1])
             self.gen_block_list.append(GenBlock(in_channels=in_c, out_channels=out_c, w_dim=w_dim))
-            self.to_rgb_list.append(WSConv2d(in_channels=in_c, out_channels=img_channels, kernel_size=1, stride=1, padding=0))
+            self.to_rgb_list.append(WSConv2d(in_channels=out_c, out_channels=img_channels, kernel_size=1, stride=1, padding=0))
 
     def fade_in(self, alpha, up_sampled, generated):
         return torch.tanh(alpha*generated + (1-alpha)*up_sampled)

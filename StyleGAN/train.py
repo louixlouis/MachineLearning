@@ -91,7 +91,7 @@ def main():
         alpha = 1e-7
         dataset, loader = get_loader(image_size=4*2**step, batch_size_list=batch_size_list, data_root=data_root)
         print(f'Current image size : {4*2**step} X {4*2**step}')
-
+        # Problem with step = 3
         # Train parts.
         for epoch in range(epochs):
             print(f'Epoch [{epoch+1}]/[{epochs}]')
